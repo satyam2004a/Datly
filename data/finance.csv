@@ -1,0 +1,151 @@
+customer_id,name,age,city,annual_income,account_balance,transactions_last_month,credit_score,loan_amount,account_tenure_years,customer_segment,product,channel,status
+10001,Aarav Sharma,34,Delhi,85000,250000,12,720,250000,5,Retail,Savings Account,Online,Active
+10002,Priya Singh,28,Mumbai,62000,145000,8,680,150000,3,Premium,Credit Card,Branch,Active
+10003,Rahul Kumar,45,Bangalore,120000,580000,18,760,450000,8,Business,Personal Loan,Mobile App,Active
+10004,Sneha Verma,31,Pune,55000,95000,6,650,100000,2,Student,Mutual Fund,Online,Active
+10005,Arjun Gupta,52,Chennai,180000,950000,25,810,750000,10,Premium,Home Loan,Branch,Active
+10006,Neha Patel,26,Hyderabad,48000,72000,5,630,80000,2,Retail,Savings Account,ATM,Inactive
+10007,Rohan Mehta,39,Kolkata,92000,310000,14,735,300000,6,Business,Insurance,Online,Active
+10008,Kavya Joshi,29,Jaipur,67000,180000,9,700,120000,4,Retail,Fixed Deposit,Branch,Active
+10009,Aman Agarwal,41, Delhi ,110000,420000,16,745,500000,7,Premium,Credit Card,Mobile App,Active
+10010,Isha Malhotra,36,Delhi,78000,220000,11,690,200000,5,Business,Personal Loan,Online,Active
+10011,Vikram Sharma,48,Mumbai,145000,680000,21,790,600000,9,Premium,Home Loan,Branch,Active
+10012,Meera Singh,23,Bangalore,35000,45000,4,610,50000,1,Student,Savings Account,Online,Active
+10013,Nikhil Kumar,5,Pune,98000,350000,15,710,250000,6,Retail,Mutual Fund,Mobile App,Active
+10014,Riya Verma,33,Chennai,72000,190000,10,675,180000,4,Retail,Insurance,Branch,Inactive
+10015,Simran Patel,27,Mumbai,58000,110000,7,640,90000,3,Student,Credit Card,Online,Active
+10016,Aarav Mehta,44,Hyderabad,130000,510000,20,770,550000,8,Business,Home Loan,Branch,Active
+10017,Priya Joshi,30,Kolkata,69000,160000,9,705,140000,4,Premium,Fixed Deposit,Online,Active
+10018,Rahul Gupta,37,Jaipur,88000,275000,13,725,220000,5,Retail,Personal Loan,ATM,Active
+10019,Sneha Agarwal,25,Delhi,51000,80000,6,655,70000,2,Retail, Credit Card ,Mobile App,Active
+10020,Arjun Malhotra,50,Bangalore,210000,1200000,30,825,950000,11,Premium,Home Loan,Branch,Active
+10021,Neha Sharma,32,Mumbai,74000,205000,10,690,170000,5,Retail,Savings Account,Online,Active
+10022,Rohan Singh,38,Pune,92000,330000,14,735,280000,6,Business,Personal Loan,Branch,Active
+10023,Kavya Kumar,29,Chennai,,125000,8,680,100000,3,Retail,Mutual Fund,Online,Active
+10024,Aman Verma,46,Hyderabad,155000,610000,22,785,650000,9,Premium,Home Loan,Mobile App,Active
+10025,Isha Patel,24,Kolkata,42000,65000,5,620,60000,2,Student,Savings Account,ATM,Inactive
+10026,Vikram Mehta,40,MUMBAI,105000,390000,17,750,400000,7,Business,Credit Card,Online,Active
+10027,Meera Joshi,35,Jaipur,82000,240000,12,715,200000,5,Retail,Insurance,Branch,Active
+10028,Nikhil Gupta,43,Delhi,-50000,280000,15,730,250000,6,Business,Personal Loan,Online,Active
+10029,Riya Agarwal,28,Bangalore,61000,135000,8,665,110000,3,Premium,Fixed Deposit,Mobile App,Active
+10030,Simran Malhotra,31,Pune,76000,210000,10,700,190000,4,Retail,Credit Card,Branch,Active
+10031,Aarav Sharma,55,Chennai,190000,850000,27,815,800000,12,Premium,Home Loan,Branch,Active
+10032,Priya Singh,,Hyderabad,68000,170000,9,695,150000,4,Retail,Savings Account,Online,Active
+10033,Rahul Kumar,42,Kolkata,115000,450000,18,755,350000,7,Business,Personal Loan,Mobile App,Active
+10034,Sneha Verma,30,Jaipur,57000,100000,6,645,90000,3, premium ,Mutual Fund,Online,Active
+10035,Arjun Gupta,49,Delhi,160000,720000,23,800,700000,9,Premium,Home Loan,Branch,Active
+10036,Neha Patel,27,Mumbai,52000,88000,7,635,75000,2,Student,Insurance,Online,Inactive
+10037,Rohan Mehta,150,Pune,98000,300000,13,725,250000,5,Retail,Credit Card,Mobile App,Active
+10038,Kavya Joshi,34,Bangalore,73000,195000,11,710,180000,4,Premium,Fixed Deposit,Branch,Active
+10039,Aman Agarwal,39,Chennai,125000,480000,19,765,420000,7,Business,Personal Loan,Online,Active
+10040,Isha Malhotra,26,Hyderabad,45000,70000,5,625,50000,2,Student,Savings Account,ATM,Inactive
+10041,Vikram Sharma,47,Kolkata,140000,640000,21,780,600000,9,Premium,Home Loan,Branch,Active
+10042,Meera Singh,29,Jaipur,63000,155000,8,675,100000,3,Retail,Insurance,Online,Active
+10043,Nikhil Kumar,36,Delhi,86000,260000,12,720,230000,5,Business,Mutual Fund,Mobile App,Active
+10044,Riya Verma,33,Mumbai,71000,185000,9,685,150000,4,Retail,Credit Card,Branch,active
+10045,Simran Patel,41,Bangalore,108000,410000,16,745,350000,7,Premium,Home Loan,Online,Active
+10046,Aarav Mehta,25,Pune,48000,92000,6,640,70000,2,Student,Savings Account,ATM,Inactive
+10047,Priya Joshi,38,Chennai,95000,-25000,14,730,280000,6,Retail,Personal Loan,Online,Active
+10048,Rahul Gupta,45,Hyderabad,135000,530000,20,770,500000,8,Business,Insurance,Branch,Active
+10049,Sneha Agarwal,28,Kolkata,59000,120000,7,660,85000,3,Retail,Fixed Deposit,Online,Active
+10050,Arjun Malhotra,53,Jaipur,175000,880000,26,805,750000,10,Premium,Home Loan,Branch,Active
+10051,Neha Sharma,31,Delhi,72000,215000,10,695,160000,4,Retail,Credit Card,Mobile App,Active
+10052,Rohan Singh,37,Mumbai,89000,290000,13,715,240000,5,Business,Personal Loan,Online,Active
+10053,Kavya Kumar,30,Bangalore,65000,145000,8,120,120000,3,Premium,Mutual Fund,Branch,Active
+10054,Aman Verma,48,Pune,150000,590000,22,790,620000,9,Business,Home Loan,Branch,Active
+10055,Isha Patel,23,Chennai,38000,52000,4,605,40000,1,Student,Savings Account,Online,Inactive
+10056,Vikram Mehta,40,Hyderabad,102000,370000,16,750,350000,7,Premium,Credit Card,Mobile App,Active
+10057,Meera Joshi,34,Kolkata,79000,225000,11,705,190000,5,Retail,Insurance,Online,Active
+10058,Nikhil Gupta,43,Jaipur,118000,440000,18,760,400000,8,Business,Personal Loan,Branch,Active
+10059,Riya Agarwal,27,Delhi,55000,98000,6,650,70000,2,Retail,Fixed Deposit,Online,Active
+10060,Simran Malhotra,36,Mumbai,83000,270000,12,715,210000,5,Premium,Credit Card,Branch,Active
+10061,Aarav Sharma,51,Bangalore,165000,760000,24,810,720000,10,Business,Home Loan,Online,Active
+10062,Priya Singh,29,Pune,64000,135000,9,690,100000,3,Retail,Savings Account,Branch,Active
+10063,Rahul Kumar,44,Chennai,125000,480000,17,745,-100000,7,Business,Personal Loan,Mobile App,Active
+10064,Sneha Verma,32,Hyderabad,69000,175000,10,680,140000,4,Retail,Mutual Fund,Online,Active
+10065,Arjun Gupta,47,Kolkata,145000,620000,21,785,580000,9,Premium,Home Loan,Branch,Active
+10066,Neha Patel,26,Jaipur,47000,61000,5,615,55000,2,Student,Savings Account,ATM,Inactive
+10067,Rohan Mehta,39,Delhi,97000,340000,15,735,300000,6,Business,Insurance,Online,Active
+10068,Kavya Joshi,35,Mumbai,81000,230000,11,710,200000,5,Retail,Credit Card,Mobile App,Active
+10069,Aman Agarwal,42,Bangalore,112000,450000,18,755,380000,7,Premium,Fixed Deposit,Branch,Active
+10070,Isha Malhotra,28,Pune,53000,85000,7,645,65000,2,Student,Savings Account,Online,Inactive
+10071,Vikram Sharma,46,Chennai,138000,570000,300,775,550000,8,Business,Home Loan,Branch,Active
+10072,Meera Singh,33,Hyderabad,74000,190000,10,700,160000,4,Retail,Insurance,online,Active
+10073,Nikhil Kumar,41,Kolkata,105000,360000,16,740,300000,6,Premium,Personal Loan,Branch,Active
+10074,Riya Verma,30,,62000,130000,8,675,100000,3,Retail,Mutual Fund,Online,Active
+10075,Simran Patel,37,Jaipur,91000,310000,14,725,250000,5,Business,Credit Card,Mobile App,Active
+10076,Aarav Mehta,24,Delhi,44000,60000,5,610,50000,2,Student,Savings Account,ATM,Inactive
+10077,Priya Joshi,49,Mumbai,155000,690000,20,800,650000,9,Premium,Home Loan,Branch,INACTIVE
+10078,Rahul Gupta,36,Bangalore,87000,250000,12,715,210000,5,Retail,Personal Loan,Online,Active
+10079,Sneha Agarwal,29,Pune,58000,105000,7,660,80000,3,Retail,Fixed Deposit,Branch,Active
+10080,Arjun Malhotra,54,Chennai,185000,920000,28,820,850000,11,Premium,Home Loan,Branch,Active
+10081,Neha Sharma,31,Hyderabad,70000,180000,9,690,150000,4,Retail,Credit Card,Online,Active
+10082,Rohan Singh,43,Kolkata,120000,420000,17,750,350000,7,Business,Insurance,Mobile App,Active
+10083,Kavya Kumar,27,Jaipur,50000,95000,6,635,70000,2,Student,Savings Account,Online,Active
+10084,Aman Verma,45,Delhi,5000000,510000,19,770,450000,8,Premium,Home Loan,Branch,Active
+10085,Isha Patel,34,Mumbai,76000,200000,10,700,170000,4,Retail,Mutual Fund,Online,Active
+10086,Vikram Mehta,40,Bangalore,99000,330000,15,735,280000,6,Business,Personal Loan,Mobile App,Active
+10087,Meera Joshi,25,Pune,46000,70000,5,620,60000,2,Student,Credit Card,Online,Inactive
+10088,Nikhil Gupta,38,Chennai,108000,395000,16,745,340000,7,Premium,Insurance,Branch,Active
+10089,Riya Agarwal,32,Hyderabad,68000,150000,8,680,110000,3,Retail,Fixed Deposit,Online,Active
+10090,Simran Malhotra,47,Kolkata,142000,610000,22,790,600000,9,Business,Home Loan,Branch,Active
+10091,Aarav Sharma,30,Jaipur,65000,125000,7,665,90000,3,Retail,Savings Account,Mobile App,Active
+10092,Priya Singh,35,Delhi,82000,240000,11,710,200000,5,Premium,Mutual Fund,Online,Active
+10093,Rahul Kumar,44,Mumbai,115000,430000,17,755,370000,7,Business,Personal Loan,Branch,Active
+10094,Sneha Verma,29,Bangalore,56000,100000,6,640,75000,2,Retail,Credit Card,Online,Active
+10095,Arjun Gupta,50,Pune,170000,780000,24,805,720000,10,Premium,Home Loan,Branch,Active
+10096,Neha Patel,999,Chennai,49000,75000,5,615,50000,2,Student,Savings Account,ATM,Inactive
+10097,Rohan Mehta,39,Hyderabad,93000,300000,14,725,260000,6,Business,Insurance,Online,Active
+10098,Kavya Joshi,31,Kolkata,72000,185000,9,695,150000,4,Retail,Fixed Deposit,Branch,Active
+10099,Aman Agarwal,46,Jaipur,130000,500000,18,765,450000,8,Premium,Home Loan,Mobile App,Active
+10100,Isha Malhotra,27,Delhi,51000,90000,6,630,65000,2,Student,Savings Account,Online,Inactive
+10101,Vikram Sharma,42,Mumbai,125000,460000,17,750,400000,7,Business,Personal Loan,Branch,Active
+10102,Meera Singh,33,Bangalore,73000,175000,10,685,140000,4,Retail,Insurance,Online,Active
+10103,Nikhil Kumar,37,Pune,88000,260000,12,720,220000,5,Premium,Credit Card,Mobile App,Active
+10104,Riya Verma,28,Chennai,60000,115000,7,650,85000,3,Retail,Mutual Fund,Branch,Active
+10105,Simran Patel,45,Hyderabad,140000,580000,20,780,520000,8,Business,Home Loan,Online,Active
+10106,Aarav Mehta,26,Kolkata,47000,68000,5,610,50000,2,Student,Savings Account,ATM,Inactive
+10107,Priya Joshi,40,Jaipur,100000,350000,15,740,300000,6,Premium,Personal Loan,Branch,Active
+10108,Rahul Gupta,34,Delhi,76000,210000,11,700,180000,4,Retail,Fixed Deposit,Online,Active
+10109,Sneha Agarwal,48,Mumbai,160000,720000,23,800,700000,10,Business,Home Loan,Branch,Active
+10110,Arjun Malhotra,29,Bangalore,58000,105000,7,665,80000,3,Student,Credit Card,Online,Active
+10111,Neha Sharma,36,Pune,84000,280000,13,715,230000,5,Retail,Insurance,Mobile App,Active
+10112,Rohan Singh,43,Chennai,118000,420000,17,755,380000,7,Business,Personal Loan,Branch,Active
+10113,Kavya Kumar,31,Hyderabad,69000,165000,9,685,130000,4,Premium,Mutual Fund,Online,Active
+10114,Aman Verma,52,Kolkata,175000,850000,26,810,780000,11,Premium,Home Loan,Branch,Active
+10115,Isha Patel,24,Jaipur,39000,55000,4,600,45000,1,Student,Savings Account,ATM,Inactive
+10116,Vikram Mehta,41,Delhi,110000,390000,16,980,350000,7,Business,Credit Card,Online,Active
+10117,Meera Joshi,35,Mumbai,78000,220000,11,705,190000,5,Retail,Insurance,Branch,Active
+10118,Nikhil Gupta,46,Bangalore,135000,520000,19,765,450000,8,Premium,Home Loan,Mobile App,Active
+10119,Riya Agarwal,27,Pune,52000,95000,6,645,70000,2,Student,Savings Account,Online,Inactive
+10120,Simran Malhotra,39,Chennai,97000,310000,14,730,270000,6,Business,Personal Loan,Branch,Active
+10121,Aarav Sharma,32,Hyderabad,72000,180000,10,695,150000,4,Retail,Mutual Fund,Online,Active
+10122,Priya Singh,44,Kolkata,125000,450000,18,760,400000,7,Premium,Home Loan,Branch,Active
+10123,Rahul Kumar,30,Jaipur,65000,130000,8,675,100000,3,Retail,Credit Card,Mobile App,Active
+10124,Sneha Verma,49,Delhi,155000,680000,21,790,620000,9,Business,Insurance,Online,Active
+10125,Arjun Gupta,26,Mumbai,48000,72000,5,615,50000,2,Student,Savings Account,ATM,Inactive
+10126,Neha Patel,38,Bangalore,92000,340000,15,735,300000,6,Premium,Personal Loan,Branch,Active
+10127,Rohan Mehta,35,Pune,80000,230000,11,710,190000,5,Retail,Fixed Deposit,Online,Active
+10128,Kavya Joshi,42,Chennai,115000,410000,17,750,360000,7,Business,Home Loan,Mobile App,Active
+10129,Aman Agarwal,29,Hyderabad,59000,110000,7,650,85000,3,Retail,Savings Account,Online,Active
+10130,Isha Malhotra,47,Kolkata,145000,620000,22,785,580000,9,Premium,Home Loan,Branch,Active
+10131,Vikram Sharma,33,Jaipur,76000,190000,10,700,160000,4,Retail,Credit Card,Online,Active
+10132,Meera Singh,41,Delhi,108000,360000,16,740,300000,6,Business,Personal Loan,Branch,Active
+10133,Nikhil Kumar,28,Mumbai,54000,85000,6,635,65000,2,Student,Savings Account,ATM,Inactive
+10134,Riya Verma,45,Bangalore,132000,490000,18,765,420000,8,Premium,Home Loan,Online,Active
+10135,Simran Patel,37,Pune,88000,275000,13,720,220000,5,Retail,Insurance,Branch,Active
+10136,Aarav Mehta,31,Chennai,71000,155000,8,680,120000,3,Retail,Mutual Fund,Online,Active
+10137,Priya Joshi,50,Hyderabad,165000,780000,25,810,700000,10,Business,Home Loan,Branch,Active
+10138,Rahul Gupta,34,Kolkata,79000,215000,11,705,180000,4,Retail,Fixed Deposit,Online,Active
+10139,Sneha Agarwal,43,Jaipur,120000,430000,17,755,370000,7,Premium,Credit Card,Mobile App,Active
+10140,Arjun Malhotra,27,Delhi,51000,78000,5,625,60000,2,Student,Savings Account,ATM,Inactive
+10141,Neha Sharma,39,Mumbai,95000,320000,14,730,280000,6,Business,Personal Loan,Branch,Active
+10142,Rohan Singh,36,Bangalore,85000,250000,12,710,200000,5,Retail,Insurance,Online,Active
+10143,Kavya Kumar,48,Pune,150000,650000,21,790,600000,9,Premium,Home Loan,Branch,Active
+10144,Aman Verma,30,Chennai,62000,125000,8,670,95000,3,Retail,Credit Card,Online,Active
+10145,Isha Patel,44,Hyderabad,110000,400000,16,745,350000,7,Business,Mutual Fund,Mobile App,Active
+10146,Vikram Mehta,25,Kolkata,45000,65000,4,605,50000,1,Student,Savings Account,ATM,Inactive
+10147,Meera Joshi,40,Jaipur,100000,360000,15,735,300000,6,Premium,Personal Loan,Branch,Active
+10148,Nikhil Gupta,32,Delhi,73000,190000,9,690,150000,4,Retail,Fixed Deposit,Online,Active
+10149,Riya Agarwal,46,Mumbai,140000,600000,20,780,550000,8,Business,Home Loan,Branch,Active
+10005,Arjun Gupta,52,Chennai,180000,950000,25,810,750000,10,Premium,Home Loan,Branch,Active
