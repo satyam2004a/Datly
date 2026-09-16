@@ -11,6 +11,7 @@ Datly provides a single workflow to inspect a dataset, identify quality issues, 
 
 ![Datly Dashboard](assets/datly-dashboard.png)
 
+<<<<<<< HEAD
 Features
 📂 CSV dataset upload
 🔍 Dataset profiling
@@ -24,6 +25,25 @@ Features
 🖥️ Interactive Streamlit dashboard
 👀 Dataset preview and analysis
 How Datly Works
+=======
+## Features
+
+* 📂 CSV dataset upload
+* 🔍 Dataset profiling
+* 📊 Data quality analysis
+* ⚠️ Anomaly and outlier detection
+* 🧹 Automated data cleaning
+* 🔁 Iterative cleaning workflow
+* 📈 Quality score calculation
+* 💡 Data quality recommendations
+* 📄 Professional TXT and HTML quality reports
+* 🖥️ Interactive Streamlit dashboard
+* 👀 Dataset preview and analysis
+
+## How Datly Works
+
+```text
+>>>>>>> 0988a8e9765716d547771d25f608df5aee086f21
 Upload CSV
     ↓
 Dataset Profiling
@@ -39,6 +59,7 @@ Cleaning & Validation
 Recommendations
     ↓
 Quality Report
+<<<<<<< HEAD
 Tech Stack
 Python
 Pandas
@@ -46,6 +67,21 @@ Streamlit
 HTML / CSS
 Git & GitHub
 Project Structure
+=======
+```
+
+## Tech Stack
+
+* **Python**
+* **Pandas**
+* **Streamlit**
+* **HTML / CSS**
+* **Git & GitHub**
+
+## Project Structure
+
+```text
+>>>>>>> 0988a8e9765716d547771d25f608df5aee086f21
 Datly/
 │
 ├── app.py
@@ -73,6 +109,7 @@ Datly/
     ├── quality_rules.py
     ├── quality_score.py
     └── recommendations.py
+<<<<<<< HEAD
 Getting Started
 1. Clone the repository
 git clone https://github.com/satyam2004a/Datly.git
@@ -130,3 +167,94 @@ Satyam Raj
 BTech Computer Science
 
 ⭐ If you find Datly interesting, feel free to explore the project and its implementation.
+=======
+```
+
+## Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/satyam2004a/Datly.git
+cd Datly
+```
+
+### 2. Create a virtual environment
+
+```bash
+python -m venv venv
+```
+
+### 3. Activate the virtual environment
+
+**Windows:**
+
+```bash
+venv\Scripts\activate
+```
+
+### 4. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 5. Run Datly
+
+```bash
+streamlit run app.py
+```
+
+The application will open in your browser.
+
+## Example Workflow
+
+A typical Datly analysis follows this process:
+
+1. Upload a CSV dataset.
+2. Preview the dataset.
+3. Profile columns and dataset characteristics.
+4. Run data quality checks.
+5. Detect anomalies and outliers.
+6. Calculate the dataset quality score.
+7. Apply cleaning operations where required.
+8. Re-check the dataset.
+9. Review recommendations.
+10. Generate a quality report.
+
+## Purpose
+
+Datly was developed as a hands-on software project to explore practical applications of:
+
+* Data analysis
+* Data quality engineering
+* Anomaly detection
+* Python and Pandas
+* Streamlit application development
+* Modular software architecture
+* Automated data cleaning
+* Reporting and visualization
+
+## Future Scope
+
+Potential future improvements include:
+
+* Support for larger datasets
+* Additional anomaly detection techniques
+* More advanced statistical profiling
+* Database connectivity
+* Automated data quality monitoring
+* Scheduled dataset validation
+* API integration
+* Deployment as a hosted application
+
+## Author
+
+**Satyam Raj**
+
+BTech Computer Science
+
+---
+
+⭐ If you find Datly interesting, feel free to explore the project and its implementation.
+>>>>>>> 0988a8e9765716d547771d25f608df5aee086f21
