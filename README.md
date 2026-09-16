@@ -10,6 +10,10 @@ Data quality problems such as missing values, duplicates, invalid values, incons
 
 Datly provides a single workflow to inspect a dataset, identify quality issues, detect anomalies, apply cleaning operations, and measure the resulting data quality.
 
+## Dashboard Preview
+
+![Datly Dashboard](assets/datly-dashboard.png)
+
 ## Features
 
 * 📂 CSV dataset upload
