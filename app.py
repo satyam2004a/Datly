@@ -1,4 +1,5 @@
 import hashlib
+import io
 
 import streamlit as st
 import pandas as pd
@@ -32,6 +33,19 @@ from src.quality_report import (
     generate_quality_report_html
 )
 
+
+# =========================================================
+# PERFORMANCE SETTINGS
+# =========================================================
+
+# Never render huge DataFrames directly in Streamlit.
+# The complete data remains available for download.
+MAX_DISPLAY_ROWS = 500
+
+# Maximum number of anomalies displayed in the dashboard.
+MAX_ANOMALY_DISPLAY_ROWS = 500
+
+
 # =========================================================
 # PAGE CONFIGURATION
 # =========================================================
@@ -44,135 +58,86 @@ st.set_page_config(
 
 
 # =========================================================
-# PROFESSIONAL UI STYLING
+# CUSTOM CSS
 # =========================================================
 
 st.markdown(
     """
     <style>
 
-    /* Main application spacing */
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 3rem;
-        max-width: 1400px;
+    .main {
+        background-color: #f8fafc;
     }
 
-    /* Hero section */
-    .datly-hero {
-        padding: 1.6rem 1.8rem;
-        margin-bottom: 1.8rem;
-        border: 1px solid rgba(128, 128, 128, 0.22);
+    .hero {
+        padding: 2rem 2rem 1.5rem 2rem;
         border-radius: 18px;
-        background: linear-gradient(135deg, rgba(128, 128, 128, 0.08), rgba(128, 128, 128, 0.03));
+        background: linear-gradient(
+            135deg,
+            #0f172a,
+            #1e293b
+        );
+        color: white;
+        margin-bottom: 2rem;
     }
 
-    .datly-hero-title {
-        font-size: 2.5rem;
-        font-weight: 750;
-        margin: 0;
-        line-height: 1.15;
+    .hero h1 {
+        font-size: 3rem;
+        margin-bottom: 0.3rem;
     }
 
-    .datly-hero-subtitle {
-        font-size: 1.15rem;
-        font-weight: 600;
-        margin-top: 0.45rem;
-        margin-bottom: 0.35rem;
-        opacity: 0.9;
-    }
-
-    .datly-hero-tagline {
-        font-size: 1rem;
-        margin: 0;
-        opacity: 0.72;
-    }
-
-    /* Section headings */
-    .datly-section {
-        margin-top: 2.2rem;
-        margin-bottom: 1rem;
-        padding-bottom: 0.65rem;
-        border-bottom: 1px solid rgba(128, 128, 128, 0.20);
-    }
-
-    .datly-section-title {
-        font-size: 1.45rem;
-        font-weight: 700;
-        margin: 0;
-    }
-
-    .datly-section-description {
-        font-size: 0.92rem;
-        margin: 0.25rem 0 0;
-        opacity: 0.68;
-    }
-
-    /* Metric cards */
-    .datly-metric-card {
-        padding: 1rem 1.05rem;
-        min-height: 105px;
-        border: 1px solid rgba(128, 128, 128, 0.22);
-        border-radius: 14px;
-        background: rgba(128, 128, 128, 0.045);
-        margin-bottom: 0.7rem;
-    }
-
-    .datly-metric-label {
-        font-size: 0.82rem;
-        font-weight: 600;
-        opacity: 0.68;
-        margin-bottom: 0.35rem;
-    }
-
-    .datly-metric-value {
+    .hero .tagline {
         font-size: 1.55rem;
-        font-weight: 750;
-        line-height: 1.2;
+        color: #cbd5e1;
+        margin-bottom: 0.5rem;
     }
 
-    /* Status card */
-    .datly-status-card {
-        padding: 1rem 1.2rem;
-        border: 1px solid rgba(128, 128, 128, 0.22);
-        border-radius: 14px;
-        background: rgba(128, 128, 128, 0.045);
-        margin: 0.8rem 0 1rem;
+    .hero p {
+        font-size: 1.20rem;
+        color: #cbd5e1;
     }
 
-    .datly-status-label {
-        font-size: 0.82rem;
-        font-weight: 600;
-        opacity: 0.68;
-    }
-
-    .datly-status-value {
-        font-size: 1.2rem;
+    .section-title {
+        font-size: 1.7rem;
         font-weight: 700;
-        margin-top: 0.25rem;
+        margin-top: 2rem;
+        margin-bottom: 0.2rem;
     }
 
-    /* Buttons */
-    div.stButton > button, div.stDownloadButton > button {
-        border-radius: 10px;
-        font-weight: 650;
-        min-height: 2.7rem;
+    .section-description {
+        color: #64748b;
+        margin-bottom: 1rem;
     }
 
-    /* File uploader */
-    [data-testid="stFileUploader"] {
+    .metric-card {
+        background: white;
+        padding: 1.2rem;
         border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+        text-align: center;
     }
 
-    /* Tables */
-    [data-testid="stDataFrame"] {
-        border-radius: 12px;
-        overflow: hidden;
+    .metric-card h3 {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.9rem;
     }
 
-    /* Reduce excessive vertical gaps around widgets */
-    div[data-testid="stVerticalBlock"] > div:has(> div.stMarkdown) {
-        margin-bottom: 0.15rem;
+    .metric-card h2 {
+        margin: 0.4rem 0 0 0;
+        font-size: 1.8rem;
+        color: #0f172a;
+    }
+
+    .stButton > button {
+        border-radius: 10px;
+        font-weight: 600;
+    }
+
+    .stDownloadButton > button {
+        border-radius: 10px;
+        font-weight: 600;
     }
 
     </style>
@@ -182,47 +147,85 @@ st.markdown(
 
 
 # =========================================================
-# UI HELPERS
+# HELPER FUNCTIONS
 # =========================================================
 
 def section_heading(title, description):
-    """Display a consistent professional section heading."""
-
     st.markdown(
         f"""
-        <div class="datly-section">
-            <div class="datly-section-title">{title}</div>
-            <div class="datly-section-description">{description}</div>
-        </div>
+        <div class="section-title">{title}</div>
+        <div class="section-description">{description}</div>
         """,
         unsafe_allow_html=True
     )
 
 
 def metric_card(label, value):
-    """Display a compact professional metric card."""
-
     st.markdown(
         f"""
-        <div class="datly-metric-card">
-            <div class="datly-metric-label">{label}</div>
-            <div class="datly-metric-value">{value}</div>
+        <div class="metric-card">
+            <h3>{label}</h3>
+            <h2>{value}</h2>
         </div>
         """,
         unsafe_allow_html=True
     )
 
 
+def display_dataframe_preview(
+    dataframe,
+    max_rows=MAX_DISPLAY_ROWS
+):
+    """
+    Display only a limited preview in Streamlit.
+
+    The original DataFrame is not modified.
+    """
+
+    if dataframe is None:
+        return
+
+    total_rows = len(dataframe)
+
+    if total_rows > max_rows:
+
+        st.dataframe(
+            dataframe.head(max_rows),
+            use_container_width=True,
+            hide_index=True
+        )
+
+        st.caption(
+            f"Showing first {max_rows:,} of "
+            f"{total_rows:,} rows. "
+            "The complete dataset remains available "
+            "for download."
+        )
+
+    else:
+
+        st.dataframe(
+            dataframe,
+            use_container_width=True,
+            hide_index=True
+        )
+
+
 # =========================================================
-# TITLE
+# HERO SECTION
 # =========================================================
 
 st.markdown(
     """
-    <div class="datly-hero">
-        <div class="datly-hero-title">🛡️ Datly</div>
-        <div class="datly-hero-subtitle">Smart Data Quality &amp; Anomaly Detection</div>
-        <div class="datly-hero-tagline">Clean data. Detect anomalies. Boost your projects with cleaner, smarter data.</div>
+    <div style="
+        padding: 30px;
+        border-radius: 18px;
+        background: #0f172a;
+        color: white;
+    ">
+        <h1>🛡️ Datly</h1>
+        <h3>Smart Data Quality &amp; Anomaly Detection</h3>
+        <p>Clean data. Detect anomalies. Boost your projects with cleaner, smarter data.</p>
     </div>
     """,
     unsafe_allow_html=True
@@ -233,53 +236,68 @@ st.markdown(
 # CSV UPLOAD
 # =========================================================
 
+section_heading(
+    "📂 Upload Dataset",
+    "Upload a CSV file to analyze, validate, detect anomalies, and clean."
+)
+
 uploaded_file = st.file_uploader(
     "Choose a CSV file",
     type=["csv"]
 )
 
-st.caption(
-    "Supported format: CSV. Datly will profile, validate, detect anomalies, clean, score, and report on your dataset."
+
+if uploaded_file is None:
+
+    st.info(
+        "👆 Upload a CSV file to start analyzing your dataset."
+    )
+
+    st.stop()
+
+
+# =========================================================
+# FILE ID
+# =========================================================
+
+file_bytes = uploaded_file.getvalue()
+
+file_id = hashlib.md5(
+    file_bytes
+).hexdigest()
+
+
+# =========================================================
+# NEW FILE DETECTION
+# =========================================================
+
+is_new_file = (
+    st.session_state.get("file_id") != file_id
 )
 
 
-if uploaded_file is not None:
+if is_new_file:
+
+    # Clear old dataset-specific state.
+    st.session_state.clear()
+
+    st.session_state["file_id"] = file_id
 
     # -----------------------------------------------------
-    # Detect a new uploaded file
-    # -----------------------------------------------------
-
-    file_bytes = uploaded_file.getvalue()
-
-    file_id = hashlib.md5(
-        file_bytes
-    ).hexdigest()
-
-    if st.session_state.get(
-        "file_id"
-    ) != file_id:
-
-        st.session_state.clear()
-
-        st.session_state[
-            "file_id"
-        ] = file_id
-
-    # -----------------------------------------------------
-    # Read CSV safely
+    # READ CSV ONLY ONCE
     # -----------------------------------------------------
 
     try:
 
         df = pd.read_csv(
-            uploaded_file
+            io.BytesIO(file_bytes)
         )
 
     except Exception as error:
 
         st.error(
             "❌ The CSV file could not be read. "
-            f"Please check the file format. "
+            f"Please check the file form        at. "
             f"Details: {error}"
         )
 
@@ -293,392 +311,633 @@ if uploaded_file is not None:
 
         st.stop()
 
-    st.success(
-        "CSV file uploaded successfully!"
-    )
-
-
-    # =====================================================
-    # DATASET PREVIEW
-    # =====================================================
-
-    # =====================================================
-    # DATASET PREVIEW
-# =====================================================
-
-    section_heading(
-        "📋 Dataset Preview",
-        "Take a quick look at the uploaded records before quality analysis begins."
-    )
-
-    if df.empty:    
-
-        st.error(
-            "❌ The uploaded dataset contains no rows."
-        )
+    if df.shape[0] == 0:
 
         st.warning(
-            "⚠️ Please upload a CSV file containing at least "
-            "one data row before running quality analysis."
+            "⚠️ Empty Dataset"
         )
 
         st.info(
-             "💡 The dataset must contain actual records. "
-            "A CSV containing only column headers cannot be "
-            "analyzed for data quality, anomalies, or cleaning."
+            "The uploaded CSV contains no data rows. "
+            "Please upload a dataset containing at least one row."
+        )
+
+        st.stop()
+    
+    if df.isna().all().all():
+
+        st.warning(
+            "⚠️ Empty Dataset"
+        )
+
+        st.info(
+            "The uploaded dataset contains rows, but all values are missing. "
+            "Please upload a dataset containing actual data."
         )
 
         st.stop()
 
-    else:
-
-        st.dataframe(
-             df,
-            use_container_width=True
-        )
 
 
-    # =====================================================
-    # DATASET PROFILE
-    # =====================================================
+    # -----------------------------------------------------
+    # STORE DATASET
+    # -----------------------------------------------------
 
-    profile = profile_dataset(
-        df
+    st.session_state["df"] = df
+
+    st.session_state["dataset_name"] = (
+        uploaded_file.name
     )
 
-    section_heading(
-        "📊 Dataset Profile",
-        "Understand the structure, data types, and key characteristics of your dataset."
+    # -----------------------------------------------------
+    # INITIAL PROFILE
+    # -----------------------------------------------------
+
+    st.session_state["profile"] = (
+        profile_dataset(df)
     )
 
-    col1, col2, col3, col4 = st.columns(4)
+    # -----------------------------------------------------
+    # QUALITY RULES
+    # -----------------------------------------------------
 
-    with col1:
-        metric_card(
-            "Rows",
-            f"{profile['rows']:,}"
-        )
-
-    with col2:
-        metric_card(
-            "Columns",
-            f"{profile['columns']:,}"
-        )
-
-    with col3:
-        metric_card(
-            "Numerical Columns",
-            f"{len(profile['numerical_columns']):,}"
-        )
-
-    with col4:
-        metric_card(
-            "Categorical Columns",
-            f"{len(profile['categorical_columns']):,}"
-        )
-
-
-    st.subheader(
-        "📋 Column Profile"
+    st.session_state["quality_results"] = (
+        run_quality_rules(df)
     )
 
-    st.dataframe(
-        profile["column_profile"],
-        use_container_width=True,
-        hide_index=True
-    )
-
-
-    # =====================================================
-    # NUMERICAL STATISTICS
-    # =====================================================
-
-    if profile[
-        "numerical_statistics"
-    ]:
-
-        st.subheader(
-            "📐 Numerical Statistics"
-        )
-
-        statistics_df = (
-            pd.DataFrame(
-                profile[
-                    "numerical_statistics"
-                ]
-            )
-            .T
-            .reset_index()
-            .rename(
-                columns={
-                    "index": "Column"
-                }
-            )
-        )
-
-        st.dataframe(
-            statistics_df,
-            use_container_width=True,
-            hide_index=True
-        )
-
-    else:
-
-        st.info(
-            "No numerical columns are available "
-            "for statistical analysis."
-        )
-
-
-    # =====================================================
-    # DATA QUALITY RULES
-    # =====================================================
-
-    section_heading(
-        "🛡️ Data Quality Rules",
-        "Check completeness, validity, uniqueness, and other data-quality conditions."
-    )
-
-    quality_results = run_quality_rules(
-        df
-    )
-
-    rule_table = quality_results[
-        "rule_table"
-    ]
-
-    display_rule_table = rule_table[
-        [
-            "rule",
-            "category",
-            "count",
-            "rate",
-            "severity",
-            "details"
-        ]
-    ].rename(
-        columns={
-            "rule": "Rule",
-            "category": "Category",
-            "count": "Issues",
-            "rate": "Rate %",
-            "severity": "Severity",
-            "details": "Details"
-        }
-    )
-
-    st.dataframe(
-        display_rule_table,
-        use_container_width=True,
-        hide_index=True
-    )
-
-
-    # =====================================================
+    # -----------------------------------------------------
     # INITIAL ANOMALY DETECTION
-    # =====================================================
+    # -----------------------------------------------------
 
-    section_heading(
-        "🚨 Anomaly Detection",
-        "Identify unusual values and potential issues that may affect your analysis."
+    initial_results = detect_anomalies(df)
+
+    st.session_state["initial_anomaly_results"] = (
+        initial_results
     )
 
-    results = detect_anomalies(
-        df
+    st.session_state["initial_anomaly_summary"] = (
+        anomaly_summary(initial_results)
     )
 
-    summary = anomaly_summary(
-        results
+    st.session_state["initial_anomaly_report"] = (
+        combined_anomaly_report(initial_results)
     )
 
-    st.dataframe(
-        summary,
-        use_container_width=True,
-        hide_index=True
+    # -----------------------------------------------------
+    # INITIAL QUALITY SCORE
+    # -----------------------------------------------------
+
+    initial_anomaly_report = (
+        st.session_state["initial_anomaly_report"]
     )
 
-
-    # =====================================================
-    # INITIAL ANOMALY REPORT
-    # =====================================================
-
-    anomaly_report = combined_anomaly_report(
-        results
+    quality_results = (
+        st.session_state["quality_results"]
     )
-
-    if anomaly_report.empty:
-
-        st.success(
-            "✅ No anomalies detected!"
-        )
-
-    else:
-
-        st.subheader(
-            "🔎 Detected Anomalies"
-        )
-
-        display_columns = [
-            "row_index",
-            "column",
-            "value",
-            "z_score",
-            "anomaly_method",
-            "severity",
-            "individual_score"
-        ]
-
-        display_columns = [
-            column
-            for column in display_columns
-            if column in anomaly_report.columns
-        ]
-
-        st.dataframe(
-            anomaly_report[
-                display_columns
-            ],
-            use_container_width=True,
-            hide_index=True
-        )
-
-
-    # =====================================================
-    # ENHANCED DATASET QUALITY SCORE
-    # =====================================================
 
     raw_anomaly_penalty = calculate_anomaly_score(
-        anomaly_report,
+        initial_anomaly_report,
         len(df)
     )
 
-
-    completeness_score = calculate_completeness_score(
-        quality_results
+    completeness_score = (
+        calculate_completeness_score(
+            quality_results
+        )
     )
 
-    validity_score = calculate_validity_score(
-        quality_results
+    validity_score = (
+        calculate_validity_score(
+            quality_results
+        )
     )
 
-    uniqueness_score = calculate_uniqueness_score(
-        quality_results
+    uniqueness_score = (
+        calculate_uniqueness_score(
+            quality_results
+        )
     )
 
-    anomaly_quality_score = calculate_anomaly_quality_score(
-        raw_anomaly_penalty
+    anomaly_quality_score = (
+        calculate_anomaly_quality_score(
+            raw_anomaly_penalty
+        )
     )
 
-    overall_quality_score = calculate_overall_quality_score(
-        completeness_score,
-        validity_score,
-        uniqueness_score,
-        anomaly_quality_score
+    overall_quality_score = (
+        calculate_overall_quality_score(
+            completeness_score,
+            validity_score,
+            uniqueness_score,
+            anomaly_quality_score
+        )
     )
 
     quality_status = get_quality_status(
         overall_quality_score
     )
 
-
-    # =====================================================
-    # DATASET QUALITY
-    # =====================================================
-
-    section_heading(
-        "📈 Dataset Quality",
-        "Measure the overall health of your data using multiple quality dimensions."
+    st.session_state["completeness_score"] = (
+        completeness_score
     )
 
-    score_col1, score_col2, score_col3, score_col4 = (
-        st.columns(4)
+    st.session_state["validity_score"] = (
+        validity_score
     )
 
-    with score_col1:
-        metric_card(
-            "Completeness",
-            f"{completeness_score:.2f} / 100"
-        )
-
-    with score_col2:
-        metric_card(
-            "Validity",
-            f"{validity_score:.2f} / 100"
-        )
-
-    with score_col3:
-        metric_card(
-            "Uniqueness",
-            f"{uniqueness_score:.2f} / 100"
-        )
-
-    with score_col4:
-        metric_card(
-            "Anomaly Quality",
-            f"{anomaly_quality_score:.2f} / 100"
-        )
-
-    overall_col1, overall_col2 = st.columns([2, 1])
-
-    with overall_col1:
-        metric_card(
-            "Overall Quality Score",
-            f"{overall_quality_score:.2f} / 100"
-        )
-        st.progress(
-            max(0.0, min(1.0, overall_quality_score / 100)),
-            text="Overall dataset quality"
-        )
-
-    with overall_col2:
-        st.markdown(
-            f"""
-            <div class="datly-status-card">
-                <div class="datly-status-label">Quality Status</div>
-                <div class="datly-status-value">{quality_status}</div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-
-    # =====================================================
-    # CLEAN DATASET
-    # =====================================================
-
-    section_heading(
-        "🧹 Data Cleaning",
-        "Iteratively clean detected issues and recheck the dataset after each pass."
+    st.session_state["uniqueness_score"] = (
+        uniqueness_score
     )
 
-    if st.button(
-        "🧹 Clean Dataset",
-        type="primary"
+    st.session_state["anomaly_quality_score"] = (
+        anomaly_quality_score
+    )
+
+    st.session_state["overall_quality_score"] = (
+        overall_quality_score
+    )
+
+    st.session_state["quality_status"] = (
+        quality_status
+    )
+
+
+# =========================================================
+# RESTORE CACHED DATA
+# =========================================================
+
+df = st.session_state["df"]
+
+dataset_name = st.session_state[
+    "dataset_name"
+]
+
+profile = st.session_state[
+    "profile"
+]
+
+quality_results = st.session_state[
+    "quality_results"
+]
+
+anomaly_summary_df = st.session_state[
+    "initial_anomaly_summary"
+]
+
+anomaly_report = st.session_state[
+    "initial_anomaly_report"
+]
+
+completeness_score = st.session_state[
+    "completeness_score"
+]
+
+validity_score = st.session_state[
+    "validity_score"
+]
+
+uniqueness_score = st.session_state[
+    "uniqueness_score"
+]
+
+anomaly_quality_score = st.session_state[
+    "anomaly_quality_score"
+]
+
+overall_quality_score = st.session_state[
+    "overall_quality_score"
+]
+
+quality_status = st.session_state[
+    "quality_status"
+]
+
+
+# =========================================================
+# DATASET PREVIEW
+# =========================================================
+
+section_heading(
+    "📋 Dataset Preview",
+    "Quick preview of the uploaded dataset."
+)
+
+
+if df.empty:
+
+    st.warning(
+        "⚠️ The dataset contains columns but no rows."
+    )
+
+else:
+
+    display_dataframe_preview(df)
+
+
+# =========================================================
+# DATASET PROFILE
+# =========================================================
+
+section_heading(
+    "🔎 Dataset Profile",
+    "Understand the structure and characteristics of your dataset."
+)
+
+
+profile_col1, profile_col2, profile_col3, profile_col4 = (
+    st.columns(4)
+)
+
+
+with profile_col1:
+
+    metric_card(
+        "Rows",
+        profile["rows"]
+    )
+
+
+with profile_col2:
+
+    metric_card(
+        "Columns",
+        profile["columns"]
+    )
+
+
+with profile_col3:
+
+    metric_card(
+        "Numerical",
+        len(
+            profile["numerical_columns"]
+        )
+    )
+
+
+with profile_col4:
+
+    metric_card(
+        "Categorical",
+        len(
+            profile["categorical_columns"]
+        )
+    )
+
+
+# =========================================================
+# COLUMN PROFILE
+# =========================================================
+
+st.subheader(
+    "📋 Column Profile"
+)
+
+display_dataframe_preview(
+    profile["column_profile"]
+)
+
+
+# =========================================================
+# NUMERICAL STATISTICS
+# =========================================================
+
+if profile["numerical_statistics"]:
+
+    st.subheader(
+        "📐 Numerical Statistics"
+    )
+
+    statistics_df = (
+        pd.DataFrame(
+            profile["numerical_statistics"]
+        )
+        .T
+        .reset_index()
+        .rename(
+            columns={
+                "index": "Column"
+            }
+        )
+    )
+
+    display_dataframe_preview(
+        statistics_df
+    )
+
+else:
+
+    st.info(
+        "No numerical columns are available for statistical analysis."
+    )
+
+
+# =========================================================
+# DATA QUALITY RULES
+# =========================================================
+
+section_heading(
+    "🛡️ Data Quality Rules",
+    "Check completeness, validity, uniqueness, and other quality issues."
+)
+
+
+rule_table = quality_results[
+    "rule_table"
+]
+
+
+display_rule_table = rule_table[
+    [
+        "rule",
+        "category",
+        "count",
+        "rate",
+        "severity",
+        "details"
+    ]
+].rename(
+    columns={
+        "rule": "Rule",
+        "category": "Category",
+        "count": "Issues",
+        "rate": "Rate %",
+        "severity": "Severity",
+        "details": "Details"
+    }
+)
+
+
+st.dataframe(
+    display_rule_table,
+    use_container_width=True,
+    hide_index=True
+)
+
+
+# =========================================================
+# INITIAL ANOMALY DETECTION
+# =========================================================
+
+section_heading(
+    "🚨 Anomaly Detection",
+    "Detect unusual or suspicious values in the dataset."
+)
+
+
+st.dataframe(
+    anomaly_summary_df,
+    use_container_width=True,
+    hide_index=True
+)
+
+
+# =========================================================
+# INITIAL ANOMALY REPORT
+# =========================================================
+
+if anomaly_report.empty:
+
+    st.success(
+        "✅ No anomalies detected!"
+    )
+
+else:
+
+    st.subheader(
+        "🔎 Detected Anomalies"
+    )
+
+    display_columns = [
+        "row_index",
+        "column",
+        "value",
+        "z_score",
+        "anomaly_method",
+        "severity",
+        "individual_score"
+    ]
+
+    display_columns = [
+        column
+        for column in display_columns
+        if column in anomaly_report.columns
+    ]
+
+    anomaly_display = anomaly_report[
+        display_columns
+    ]
+
+    display_dataframe_preview(
+        anomaly_display,
+        MAX_ANOMALY_DISPLAY_ROWS
+    )
+
+
+# =========================================================
+# INITIAL QUALITY SCORE
+# =========================================================
+
+section_heading(
+    "📊 Initial Quality Score",
+    "Measure the overall quality of the uploaded dataset."
+)
+
+
+score_col1, score_col2, score_col3, score_col4, score_col5 = (
+    st.columns(5)
+)
+
+
+with score_col1:
+
+    metric_card(
+        "Completeness",
+        f"{completeness_score:.2f}"
+    )
+
+
+with score_col2:
+
+    metric_card(
+        "Validity",
+        f"{validity_score:.2f}"
+    )
+
+
+with score_col3:
+
+    metric_card(
+        "Uniqueness",
+        f"{uniqueness_score:.2f}"
+    )
+
+
+with score_col4:
+
+    metric_card(
+        "Anomaly Score",
+        f"{anomaly_quality_score:.2f}"
+    )
+
+
+with score_col5:
+
+    metric_card(
+        "Overall Score",
+        f"{overall_quality_score:.2f}"
+    )
+
+
+st.progress(
+    min(
+        max(
+            overall_quality_score / 100,
+            0.0
+        ),
+        1.0
+    ),
+    text=(
+        f"Overall Quality Score: "
+        f"{overall_quality_score:.2f}/100"
+    )
+)
+
+
+st.info(
+    f"📌 Dataset Status: **{quality_status}**"
+)
+
+
+# =========================================================
+# DATA CLEANING
+# =========================================================
+
+section_heading(
+    "🧹 Data Cleaning",
+    "Iteratively clean detected issues and recheck the dataset after each pass."
+)
+
+
+if st.button(
+    "🧹 Clean Dataset",
+    type="primary"
+):
+
+    current_df = df.copy()
+
+    current_anomaly_report = (
+        anomaly_report.copy()
+    )
+
+    all_cleaning_reports = []
+
+    iterations_completed = 0
+
+    max_iterations = 5
+
+    cleaning_progress = st.progress(
+        0,
+        text="🧹 Preparing dataset cleaning — 0%"
+    )
+
+    cleaning_status = st.empty()
+
+    # -----------------------------------------------------
+    # NO ANOMALIES
+    # -----------------------------------------------------
+
+    if (
+        current_anomaly_report.empty
+        and not current_df.duplicated().any()
     ):
 
-        current_df = df.copy()
-
-        current_anomaly_report = (
-            anomaly_report.copy()
+        cleaning_progress.progress(
+            100,
+            text="✅ No cleaning required — 100%"
         )
 
-        all_cleaning_reports = []
+        cleaning_status.success(
+            "✅ Dataset is already clean."
+        )
 
-        iterations_completed = 0
+    # -----------------------------------------------------
+    # ITERATIVE CLEANING
+    # -----------------------------------------------------
 
-        # -------------------------------------------------
-        # ITERATIVE CLEANING
-        # -------------------------------------------------
-
-        max_iterations = 5
+    else:
 
         for iteration in range(
             max_iterations
         ):
 
-            if current_anomaly_report.empty:
+            iteration_number = (
+                iteration + 1
+            )
 
+            if (current_anomaly_report.empty
+               and not current_df.duplicated().any()
+            ):
                 break
+
+            iteration_start = int(
+                (
+                    iteration
+                    / max_iterations
+                )
+                * 100
+            )
+
+            cleaning_progress.progress(
+                iteration_start,
+                text=(
+                    f"🧹 Starting cleaning iteration "
+                    f"{iteration_number}/{max_iterations} "
+                    f"— {iteration_start}%"
+                )
+            )
+
+            cleaning_status.info(
+                f"🔍 Processing cleaning iteration "
+                f"{iteration_number} of "
+                f"{max_iterations}..."
+            )
+
+            preparing_progress = min(
+                iteration_start + 8,
+                95
+            )
+
+            cleaning_progress.progress(
+                preparing_progress,
+                text=(
+                    f"📋 Preparing cleaning actions "
+                    f"— {preparing_progress}%"
+                )
+            )
+
+            cleaning_status.info(
+                f"📋 Preparing cleaning actions "
+                f"for iteration {iteration_number}..."
+            )
+
+            cleaning_progress_value = min(
+                iteration_start + 20,
+                95
+            )
+
+            cleaning_progress.progress(
+                cleaning_progress_value,
+                text=(
+                    f"🧹 Applying cleaning actions "
+                    f"— {cleaning_progress_value}%"
+                )
+            )
+
+            cleaning_status.info(
+                f"🧹 Cleaning dataset "
+                f"(iteration {iteration_number})..."
+            )
 
             cleaned_df, cleaning_report = (
                 clean_dataset(
@@ -689,23 +948,71 @@ if uploaded_file is not None:
 
             iterations_completed += 1
 
+            report_progress = min(
+                iteration_start + 35,
+                95
+            )
+
+            cleaning_progress.progress(
+                report_progress,
+                text=(
+                    f"📝 Recording cleaning results "
+                    f"— {report_progress}%"
+                )
+            )
+
             if not cleaning_report.empty:
 
                 if "iteration" in cleaning_report.columns:
-                    cleaning_report["iteration"] = iteration + 1
+
+                    cleaning_report["iteration"] = (
+                        iteration_number
+                    )
+
                 else:
+
                     cleaning_report.insert(
                         0,
                         "iteration",
-                        iteration + 1
+                        iteration_number
                     )
 
                 all_cleaning_reports.append(
                     cleaning_report
                 )
 
+            recheck_progress = min(
+                iteration_start + 50,
+                95
+            )
+
+            cleaning_progress.progress(
+                recheck_progress,
+                text=(
+                    f"🔎 Rechecking dataset "
+                    f"— {recheck_progress}%"
+                )
+            )
+
+            cleaning_status.info(
+                "🔎 Detecting remaining anomalies..."
+            )
+
             cleaned_results = detect_anomalies(
                 cleaned_df
+            )
+
+            analysis_progress = min(
+                iteration_start + 65,
+                95
+            )
+
+            cleaning_progress.progress(
+                analysis_progress,
+                text=(
+                    f"📊 Updating anomaly analysis "
+                    f"— {analysis_progress}%"
+                )
             )
 
             new_anomaly_report = (
@@ -714,589 +1021,710 @@ if uploaded_file is not None:
                 )
             )
 
-            # -------------------------------------------------
-            # UPDATE CLEANING STATE
-            # -------------------------------------------------
-
             current_df = cleaned_df
 
             current_anomaly_report = (
                 new_anomaly_report
             )
 
-            # Stop only when no anomalies remain.
-            # Otherwise, continue to the next cleaning
-            # iteration until max_iterations is reached.
+            remaining_anomalies = len(
+                current_anomaly_report
+            )
 
-            if current_anomaly_report.empty:
+            iteration_complete_progress = min(
+                iteration_start + 80,
+                95
+            )
+
+            cleaning_progress.progress(
+                iteration_complete_progress,
+                text=(
+                    f"🔄 Iteration "
+                    f"{iteration_number}/{max_iterations} "
+                    f"complete — "
+                    f"{iteration_complete_progress}%"
+                )
+            )
+
+            cleaning_status.info(
+                f"🔄 Iteration {iteration_number} "
+                f"complete — "
+                f"{remaining_anomalies} "
+                f"anomalies remaining."
+            )
+
+            if (
+                current_anomaly_report.empty
+                and not current_df.duplicated().any()
+            ):
+
+                cleaning_progress.progress(
+                    95,
+                    text="🔎 Final validation — 95%"
+                )
+
+                cleaning_status.success(
+                    f"✅ All anomalies removed after "
+                    f"{iterations_completed} "
+                    f"iteration(s)."
+                )
 
                 break
 
+            if iteration_number == max_iterations:
 
-        # -------------------------------------------------
-        # FINAL DATA
-        # -------------------------------------------------
+                cleaning_progress.progress(
+                    95,
+                    text="⚠️ Final validation — 95%"
+                )
 
-        final_df = current_df
+                cleaning_status.warning(
+                    f"⚠️ Maximum of "
+                    f"{max_iterations} cleaning iterations "
+                    f"reached. "
+                    f"{remaining_anomalies} "
+                    f"anomalies remain."
+                )
 
-        final_anomaly_report = (
-            current_anomaly_report
-        )
+    # =====================================================
+    # FINAL DATA
+    # =====================================================
 
+    final_df = current_df
 
-        # -------------------------------------------------
-        # FINAL SCORE
-        # -------------------------------------------------
-
-        final_anomaly_penalty = (
-            calculate_anomaly_score(
-                final_anomaly_report,
-                len(final_df)
-            )
-        )
-
-        final_quality_results = (
-            run_quality_rules(
-                final_df
-            )
-        )
-
-        final_completeness_score = (
-            calculate_completeness_score(
-                final_quality_results
-            )
-        )
-
-        final_validity_score = (
-            calculate_validity_score(
-                final_quality_results
-            )
-        )
-
-        final_uniqueness_score = (
-            calculate_uniqueness_score(
-                final_quality_results
-            )
-        )
-
-        final_anomaly_quality_score = (
-            calculate_anomaly_quality_score(
-                final_anomaly_penalty
-            )
-        )
-
-        final_quality_score = (
-            calculate_overall_quality_score(
-                final_completeness_score,
-                final_validity_score,
-                final_uniqueness_score,
-                final_anomaly_quality_score
-            )
-        )
-
-
-        # -------------------------------------------------
-        # COMBINE CLEANING REPORTS
-        # -------------------------------------------------
-
-        if all_cleaning_reports:
-
-            final_cleaning_report = pd.concat(
-                all_cleaning_reports,
-                ignore_index=True
-            )
-
-        else:
-
-            final_cleaning_report = (
-                pd.DataFrame()
-            )
-
-
-        # -------------------------------------------------
-        # SAVE RESULTS
-        # -------------------------------------------------
-
-        st.session_state[
-            "cleaned_df"
-        ] = final_df
-
-        st.session_state[
-            "cleaning_report"
-        ] = final_cleaning_report
-
-        st.session_state[
-            "cleaned_quality_score"
-        ] = final_quality_score
-
-        st.session_state[
-            "final_completeness_score"
-        ] = final_completeness_score
-
-        st.session_state[
-            "final_validity_score"
-        ] = final_validity_score
-
-        st.session_state[
-            "final_uniqueness_score"
-        ] = final_uniqueness_score
-
-        st.session_state[
-            "final_anomaly_quality_score"
-        ] = final_anomaly_quality_score
-
-        st.session_state[
-            "before_anomaly_count"
-        ] = len(
-            anomaly_report
-        )
-
-        st.session_state[
-            "after_anomaly_count"
-        ] = len(
-            final_anomaly_report
-        )
-
-        st.session_state[
-            "cleaning_iterations"
-        ] = iterations_completed
-
-        st.session_state[
-            "cleaned_quality_results"
-        ] = final_quality_results
-
-        st.session_state[
-            "final_anomaly_report"
-        ] = final_anomaly_report
-
-
-        # -------------------------------------------------
-        # SUCCESS MESSAGE
-        # -------------------------------------------------
-
-        if final_anomaly_report.empty:
-
-            st.success(
-                "✅ Dataset successfully cleaned! "
-                "No anomalies remain."
-            )
-
-        else:
-
-            st.warning(
-                f"⚠️ Cleaning completed, but "
-                f"{len(final_anomaly_report)} "
-                f"anomaly/anomalies remain."
-            )
+    final_anomaly_report = (
+        current_anomaly_report
+    )
 
 
     # =====================================================
-    # SHOW CLEANED DATASET
+    # FINAL QUALITY VALIDATION
     # =====================================================
 
-    if "cleaned_df" in st.session_state:
+    cleaning_progress.progress(
+        96,
+        text="🔍 Running final quality validation — 96%"
+    )
 
-        cleaned_df = st.session_state[
-            "cleaned_df"
-        ]
+    cleaning_status.info(
+        "🔍 Running final quality validation..."
+    )
 
-        cleaning_report = st.session_state[
-            "cleaning_report"
-        ]
+    final_anomaly_penalty = calculate_anomaly_score(
+        final_anomaly_report,
+        len(final_df)
+    )
 
-        cleaned_quality_score = st.session_state[
-            "cleaned_quality_score"
-        ]
+    final_quality_results = run_quality_rules(
+        final_df
+    )
 
-        before_anomaly_count = st.session_state[
-            "before_anomaly_count"
-        ]
+    cleaning_progress.progress(
+        97,
+        text="📊 Calculating final quality score — 97%"
+    )
 
-        after_anomaly_count = st.session_state[
-            "after_anomaly_count"
-        ]
+    final_completeness_score = (
+        calculate_completeness_score(
+            final_quality_results
+        )
+    )
 
-        cleaning_iterations = st.session_state[
-            "cleaning_iterations"
-        ]
+    final_validity_score = (
+        calculate_validity_score(
+            final_quality_results
+        )
+    )
 
-        final_anomaly_report = st.session_state[
-            "final_anomaly_report"
-        ]
+    final_uniqueness_score = (
+        calculate_uniqueness_score(
+            final_quality_results
+        )
+    )
 
-        final_completeness_score = st.session_state[
-            "final_completeness_score"
-        ]
+    final_anomaly_quality_score = (
+        calculate_anomaly_quality_score(
+            final_anomaly_penalty
+        )
+    )
 
-        final_validity_score = st.session_state[
-            "final_validity_score"
-        ]
-
-        final_uniqueness_score = st.session_state[
-            "final_uniqueness_score"
-        ]
-
-        final_anomaly_quality_score = st.session_state[
-            "final_anomaly_quality_score"
-        ]
+    final_quality_score = (
+        calculate_overall_quality_score(
+            final_completeness_score,
+            final_validity_score,
+            final_uniqueness_score,
+            final_anomaly_quality_score
+        )
+    )
 
 
-        # =================================================
-        # CLEANED DATASET
-        # =================================================
+    # =====================================================
+    # COMBINE CLEANING REPORTS
+    # =====================================================
 
-        st.subheader(
-            "✨ Cleaned Dataset"
+    cleaning_progress.progress(
+        98,
+        text="📝 Preparing final cleaning report — 98%"
+    )
+
+    if all_cleaning_reports:
+
+        final_cleaning_report = pd.concat(
+            all_cleaning_reports,
+            ignore_index=True
         )
 
-        st.caption(
-            "The dataset after the iterative cleaning process."
-        )
+    else:
 
-        st.dataframe(
-            cleaned_df,
-            use_container_width=True
-        )
-
-
-        # =================================================
-        # PROFESSIONAL BEFORE VS AFTER QUALITY COMPARISON
-        # =================================================
-
-        st.subheader(
-            "📊 Before vs After Cleaning"
-        )
-
-        st.write(
-            "Comparison of dataset quality before and "
-            "after the cleaning process."
-        )
-
-
-        comparison_data = {
-
-            "Metric": [
-                "Completeness",
-                "Validity",
-                "Uniqueness",
-                "Anomaly Quality",
-                "Overall Quality"
-            ],
-
-            "Before Cleaning": [
-                completeness_score,
-                validity_score,
-                uniqueness_score,
-                anomaly_quality_score,
-                overall_quality_score
-            ],
-
-            "After Cleaning": [
-                final_completeness_score,
-                final_validity_score,
-                final_uniqueness_score,
-                final_anomaly_quality_score,
-                cleaned_quality_score
-            ]
-        }
-
-
-        comparison_df = pd.DataFrame(
-            comparison_data
+        final_cleaning_report = (
+            pd.DataFrame()
         )
 
 
-        comparison_df["Improvement"] = (
-            comparison_df["After Cleaning"]
-            - comparison_df["Before Cleaning"]
+    # =====================================================
+    # SAVE RESULTS
+    # =====================================================
+
+    st.session_state[
+        "cleaned_df"
+    ] = final_df
+
+    st.session_state[
+        "cleaning_report"
+    ] = final_cleaning_report
+
+    st.session_state[
+        "cleaned_quality_score"
+    ] = final_quality_score
+
+    st.session_state[
+        "final_completeness_score"
+    ] = final_completeness_score
+
+    st.session_state[
+        "final_validity_score"
+    ] = final_validity_score
+
+    st.session_state[
+        "final_uniqueness_score"
+    ] = final_uniqueness_score
+
+    st.session_state[
+        "final_anomaly_quality_score"
+    ] = final_anomaly_quality_score
+
+    st.session_state[
+        "before_anomaly_count"
+    ] = len(anomaly_report)
+
+    st.session_state[
+        "after_anomaly_count"
+    ] = len(final_anomaly_report)
+
+    st.session_state[
+        "cleaning_iterations"
+    ] = iterations_completed
+
+    st.session_state[
+        "cleaned_quality_results"
+    ] = final_quality_results
+
+    st.session_state[
+        "final_anomaly_report"
+    ] = final_anomaly_report
+
+    # Clear old report because dataset state changed.
+    st.session_state.pop(
+        "quality_report",
+        None
+    )
+
+    st.session_state.pop(
+        "quality_report_html",
+        None
+    )
+
+    st.session_state.pop(
+        "final_status",
+        None
+    )
+
+    st.session_state.pop(
+        "recommendations",
+        None
+    )
+
+    # =====================================================
+    # FINAL CLEANING STATUS
+    # =====================================================
+
+    if final_anomaly_report.empty:
+
+        cleaning_progress.progress(
+            100,
+            text="✅ Cleaning complete — 100%"
+        )
+
+        cleaning_status.success(
+            "🎉 Dataset successfully cleaned! "
+            "No anomalies remain."
+        )
+
+    else:
+
+        cleaning_progress.progress(
+            100,
+            text="⚠️ Cleaning process finished — 100%"
+        )
+
+        cleaning_status.warning(
+            f"⚠️ Cleaning completed, but "
+            f"{len(final_anomaly_report)} "
+            f"anomaly/anomalies remain."
         )
 
 
-        comparison_df["Before Cleaning"] = (
-            comparison_df["Before Cleaning"]
-            .round(2)
-        )
+# =========================================================
+# SHOW CLEANED DATASET
+# =========================================================
 
-        comparison_df["After Cleaning"] = (
-            comparison_df["After Cleaning"]
-            .round(2)
-        )
+if "cleaned_df" in st.session_state:
 
-        comparison_df["Improvement"] = (
-            comparison_df["Improvement"]
-            .round(2)
-        )
+    cleaned_df = st.session_state[
+        "cleaned_df"
+    ]
+
+    cleaning_report = st.session_state[
+        "cleaning_report"
+    ]
+
+    cleaned_quality_score = st.session_state[
+        "cleaned_quality_score"
+    ]
+
+    before_anomaly_count = st.session_state[
+        "before_anomaly_count"
+    ]
+
+    after_anomaly_count = st.session_state[
+        "after_anomaly_count"
+    ]
+
+    cleaning_iterations = st.session_state[
+        "cleaning_iterations"
+    ]
+
+    final_anomaly_report = st.session_state[
+        "final_anomaly_report"
+    ]
+
+    final_completeness_score = st.session_state[
+        "final_completeness_score"
+    ]
+
+    final_validity_score = st.session_state[
+        "final_validity_score"
+    ]
+
+    final_uniqueness_score = st.session_state[
+        "final_uniqueness_score"
+    ]
+
+    final_anomaly_quality_score = st.session_state[
+        "final_anomaly_quality_score"
+    ]
+
+    final_quality_results = st.session_state[
+        "cleaned_quality_results"
+    ]
 
 
-        st.dataframe(
-            comparison_df,
-            use_container_width=True,
-            hide_index=True
-        )
+    # =====================================================
+    # CLEANED DATASET
+    # =====================================================
+
+    section_heading(
+        "✨ Cleaned Dataset",
+        "Dataset after Datly's automated cleaning process."
+    )
+
+    display_dataframe_preview(
+        cleaned_df
+    )
 
 
-        # =================================================
-        # OVERALL IMPROVEMENT
-        # =================================================
+    # =====================================================
+    # BEFORE VS AFTER
+    # =====================================================
 
-        overall_improvement = (
+    section_heading(
+        "📈 Before vs After Cleaning",
+        "Comparison of dataset quality before and after cleaning."
+    )
+
+    comparison_data = {
+
+        "Metric": [
+            "Completeness",
+            "Validity",
+            "Uniqueness",
+            "Anomaly Quality",
+            "Overall Quality"
+        ],
+
+        "Before Cleaning": [
+            completeness_score,
+            validity_score,
+            uniqueness_score,
+            anomaly_quality_score,
+            overall_quality_score
+        ],
+
+        "After Cleaning": [
+            final_completeness_score,
+            final_validity_score,
+            final_uniqueness_score,
+            final_anomaly_quality_score,
             cleaned_quality_score
-            - overall_quality_score
+        ]
+    }
+
+    comparison_df = pd.DataFrame(
+        comparison_data
+    )
+
+    comparison_df["Improvement"] = (
+        comparison_df["After Cleaning"]
+        - comparison_df["Before Cleaning"]
+    )
+
+    comparison_df["Before Cleaning"] = (
+        comparison_df["Before Cleaning"]
+        .round(2)
+    )
+
+    comparison_df["After Cleaning"] = (
+        comparison_df["After Cleaning"]
+        .round(2)
+    )
+
+    comparison_df["Improvement"] = (
+        comparison_df["Improvement"]
+        .round(2)
+    )
+
+    st.dataframe(
+        comparison_df,
+        use_container_width=True,
+        hide_index=True
+    )
+
+
+    # =====================================================
+    # OVERALL IMPROVEMENT
+    # =====================================================
+
+    overall_improvement = (
+        cleaned_quality_score
+        - overall_quality_score
+    )
+
+    if overall_improvement > 0:
+
+        st.success(
+            f"📈 Overall dataset quality improved by "
+            f"{overall_improvement:.2f} points."
         )
 
-        if overall_improvement > 0:
-
-            st.success(
-                f"📈 Overall dataset quality improved by "
-                f"{overall_improvement:.2f} points."
-            )
-
-        elif overall_improvement == 0:
-
-            st.info(
-                "ℹ️ Overall quality score remained unchanged "
-                "after cleaning."
-            )
-
-        else:
-
-            st.warning(
-                f"⚠️ Overall quality score changed by "
-                f"{overall_improvement:.2f} points."
-            )
-
-
-        # =================================================
-        # ANOMALY RECHECK
-        # =================================================
-
-        st.subheader(
-            "🔄 Anomaly Recheck"
-        )
-
-        st.caption(
-            "Verify whether the cleaning process reduced the detected anomalies."
-        )
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-
-            st.metric(
-                "Anomalies Before",
-                before_anomaly_count
-            )
-
-        with col2:
-
-            anomaly_change = (
-                after_anomaly_count
-                - before_anomaly_count
-            )
-
-            st.metric(
-                "Anomalies After",
-                after_anomaly_count,
-                delta=anomaly_change,
-                delta_color="inverse"
-            )
-
-
-        # =================================================
-        # ITERATION INFORMATION
-        # =================================================
-
-        st.subheader(
-            "🔁 Cleaning Process"
-        )
-
-        st.caption(
-            "A quick summary of the iterative cleaning passes performed by Datly."
-        )
+    elif overall_improvement == 0:
 
         st.info(
-            f"The platform performed "
-            f"{cleaning_iterations} cleaning "
-            f"iteration(s) and rechecked the "
-            f"dataset after each pass."
+            "ℹ️ Overall quality score remained unchanged "
+            "after cleaning."
+        )
+
+    else:
+
+        st.warning(
+            f"⚠️ Overall quality score changed by "
+            f"{overall_improvement:.2f} points."
         )
 
 
-        # =================================================
-        # FINAL STATUS
-        # =================================================
+    # =====================================================
+    # ANOMALY RECHECK
+    # =====================================================
+
+    section_heading(
+        "🔎 Anomaly Recheck",
+        "Final anomaly analysis after cleaning."
+    )
+
+    anomaly_col1, anomaly_col2 = (
+        st.columns(2)
+    )
+
+    with anomaly_col1:
+
+        metric_card(
+            "Anomalies Before",
+            before_anomaly_count
+        )
+
+    with anomaly_col2:
+
+        metric_card(
+            "Anomalies After",
+            after_anomaly_count
+        )
+
+    if final_anomaly_report.empty:
+
+        st.success(
+            "✅ No anomalies remain after cleaning."
+        )
+
+    else:
+
+        st.warning(
+            f"⚠️ {after_anomaly_count} "
+            f"anomaly/anomalies still require review."
+        )
+
+        display_dataframe_preview(
+            final_anomaly_report,
+            MAX_ANOMALY_DISPLAY_ROWS
+        )
+
+
+    # =====================================================
+    # CLEANING PROCESS
+    # =====================================================
+
+    section_heading(
+        "🔄 Cleaning Process",
+        "Summary of the iterative cleaning process."
+    )
+
+    process_col1, process_col2 = (
+        st.columns(2)
+    )
+
+    with process_col1:
+
+        metric_card(
+            "Iterations",
+            cleaning_iterations
+        )
+
+    with process_col2:
 
         if after_anomaly_count == 0:
 
-            st.success(
-                "🎉 Final dataset quality check passed. "
-                "No anomalies remain."
+            metric_card(
+                "Final Status",
+                "Clean"
             )
 
         else:
 
-            st.warning(
-                f"⚠️ {after_anomaly_count} "
-                f"anomaly/anomalies still require "
-                f"review."
+            metric_card(
+                "Final Status",
+                "Needs Attention"
             )
 
 
-        # =================================================
-        # SMART RECOMMENDATIONS
-        # =================================================
+    # =====================================================
+    # SMART RECOMMENDATIONS
+    # =====================================================
 
-        st.subheader(
-            "💡 Smart Recommendations"
-        )
+    section_heading(
+        "💡 Smart Recommendations",
+        "Actionable recommendations based on the cleaned dataset."
+    )
 
-        st.caption(
-            "Practical next steps based on the final quality analysis."
-        )
 
-        recommendation_df = generate_recommendations(
-            st.session_state[
-                "cleaned_quality_results"
-            ],
-            st.session_state[
-                "final_anomaly_report"
-            ],
-            cleaned_quality_score
+    # -----------------------------------------------------
+    # GENERATE RECOMMENDATIONS ONLY ONCE
+    # -----------------------------------------------------
+
+    if "recommendations" not in st.session_state:
+
+        recommendation_df = (
+            generate_recommendations(
+                final_quality_results,
+                final_anomaly_report,
+                cleaned_quality_score
+            )
         )
 
         st.session_state[
             "recommendations"
         ] = recommendation_df
 
-        if recommendation_df.empty:
+    else:
 
-            st.success(
-                "✅ No additional recommendations. "
-                "The dataset is in good condition."
-            )
-
-        else:
-
-            st.dataframe(
-                recommendation_df,
-                use_container_width=True,
-                hide_index=True
-            )
-
-
-        # =================================================
-        # CLEANING REPORT
-        # =================================================
-
-        st.subheader(
-            "📝 Cleaning Report"
+        recommendation_df = (
+            st.session_state[
+                "recommendations"
+            ]
         )
 
-        st.caption(
-            "A record of the changes applied during dataset cleaning."
+
+    if recommendation_df.empty:
+
+        st.success(
+            "✅ No additional recommendations. "
+            "The dataset is in good condition."
         )
 
-        if cleaning_report.empty:
+    else:
 
-            st.info(
-                "No cleaning actions were required."
-            )
-
-        else:
-
-            st.dataframe(
-                cleaning_report,
-                use_container_width=True,
-                hide_index=True
-            )
-
-
-        # =================================================
-        # DOWNLOAD CLEANED CSV
-        # =================================================
-
-        st.subheader(
-            "⬇️ Download Cleaned Dataset"
+        st.dataframe(
+            recommendation_df,
+            use_container_width=True,
+            hide_index=True
         )
 
-        st.caption(
-            "Export the cleaned dataset for use in analysis, visualization, or machine learning."
+
+    # =====================================================
+    # CLEANING REPORT
+    # =====================================================
+
+    section_heading(
+        "📝 Cleaning Report",
+        "Detailed record of actions performed during cleaning."
+    )
+
+    if cleaning_report.empty:
+
+        st.info(
+            "ℹ️ No cleaning actions were required."
         )
 
-        csv_data = (
+    else:
+
+        display_dataframe_preview(
+            cleaning_report
+        )
+
+
+    # =====================================================
+    # DOWNLOAD CLEANED CSV
+    # =====================================================
+
+    section_heading(
+        "⬇️ Download Cleaned Dataset",
+        "Download the cleaned dataset for further use."
+    )
+
+
+    # Cache generated CSV bytes in session state.
+    if "cleaned_csv_data" not in st.session_state:
+
+        st.session_state[
+            "cleaned_csv_data"
+        ] = (
             cleaned_df
-            .to_csv(
-                index=False
-            )
+            .to_csv(index=False)
             .encode("utf-8")
         )
 
-        st.download_button(
-            label="⬇️ Download Cleaned CSV",
-            data=csv_data,
-            file_name="cleaned_dataset.csv",
-            mime="text/csv"
+    csv_data = st.session_state[
+        "cleaned_csv_data"
+    ]
+
+
+    st.download_button(
+        label="⬇️ Download Cleaned CSV",
+        data=csv_data,
+        file_name="datly_cleaned_dataset.csv",
+        mime="text/csv"
+    )
+
+
+    # =====================================================
+    # PROFESSIONAL QUALITY REPORT
+    # =====================================================
+
+    section_heading(
+        "📄 Professional Quality Report",
+        "Generate a complete report containing dataset statistics, quality scores, anomaly analysis, cleaning actions, recommendations, and final status."
+    )
+
+
+    if st.button(
+        "📄 Generate Quality Report",
+        type="primary"
+    ):
+
+        # -------------------------------------------------
+        # FINAL STATUS
+        # -------------------------------------------------
+
+        has_quality_issues = (
+            recommendation_df is not None
+            and not recommendation_df.empty
+            and "Issue" in recommendation_df.columns
+            and not (
+                recommendation_df["Issue"]
+                .astype(str)
+                .str.strip()
+                .eq("Dataset Ready")
+                .all()
+            )
         )
 
-        # =================================================
-        # PROFESSIONAL QUALITY REPORT
-        # =================================================
-
-        st.subheader(
-            "📄 Professional Quality Report"
-        )
-
-        st.write(
-            "Generate a complete quality report containing "
-            "dataset statistics, quality scores, anomaly "
-            "analysis, cleaning actions, recommendations, "
-            "and final status."
-        )
-
-        if st.button(
-            "📄 Generate Quality Report",
-            type="primary"
+        if (
+            after_anomaly_count == 0
+            and not has_quality_issues
         ):
 
-            # -------------------------------------------------
-            # DETERMINE FINAL DATASET STATUS
-            # -------------------------------------------------
+            final_status = "Dataset Ready"
 
-            recommendations = st.session_state.get(
-                "recommendations",
-                pd.DataFrame()
-            )
+        else:
 
-            has_quality_issues = (
-                recommendations is not None
-                and not recommendations.empty
-                and not (
-                    recommendations["Issue"]
-                    .astype(str)
-                    .str.strip()
-                    .eq("Dataset Ready")
-                    .all()
-                )
-            )
+            final_status = "Needs Attention"
 
-            if (
-                after_anomaly_count == 0
-                and not has_quality_issues
-            ):
 
-                final_status = "Dataset Ready"
+        # -------------------------------------------------
+        # GENERATE TEXT REPORT
+        # -------------------------------------------------
 
-            else:
+        quality_report = generate_quality_report(
 
-                final_status = "Needs Attention"            
+            dataset_name=dataset_name,
 
-            # -------------------------------------------------
-            # GENERATE TEXT REPORT
-            # -------------------------------------------------
+            rows=len(df),
 
-            quality_report = generate_quality_report(
+            columns=len(df.columns),
 
-                dataset_name=uploaded_file.name,
+            initial_quality_score=overall_quality_score,
+
+            final_quality_score=cleaned_quality_score,
+
+            initial_anomaly_count=before_anomaly_count,
+
+            final_anomaly_count=after_anomaly_count,
+
+            cleaning_iterations=cleaning_iterations,
+
+            cleaning_report=cleaning_report,
+
+            recommendations=recommendation_df,
+
+            final_status=final_status
+        )
+
+
+        # -------------------------------------------------
+        # GENERATE HTML REPORT
+        # -------------------------------------------------
+
+        quality_report_html = (
+            generate_quality_report_html(
+
+                dataset_name=dataset_name,
 
                 rows=len(df),
 
@@ -1314,127 +1742,102 @@ if uploaded_file is not None:
 
                 cleaning_report=cleaning_report,
 
-                recommendations=st.session_state[
-                    "recommendations"
-                ],
+                recommendations=recommendation_df,
 
                 final_status=final_status
             )
+        )
 
-            # -------------------------------------------------
-            # GENERATE HTML REPORT
-            # -------------------------------------------------
-
-            quality_report_html = (
-                generate_quality_report_html(
-
-                    dataset_name=uploaded_file.name,
-
-                    rows=len(df),
-
-                    columns=len(df.columns),
-
-                    initial_quality_score=overall_quality_score,
-
-                    final_quality_score=cleaned_quality_score,
-
-                    initial_anomaly_count=before_anomaly_count,
-
-                    final_anomaly_count=after_anomaly_count,
-
-                    cleaning_iterations=cleaning_iterations,
-
-                    cleaning_report=cleaning_report,
-
-                    recommendations=st.session_state[
-                        "recommendations"
-                    ],
-
-                    final_status=final_status
-                )
-            )
-
-            # -------------------------------------------------
-            # SAVE REPORTS IN SESSION STATE
-            # -------------------------------------------------
-
-            st.session_state[
-                "quality_report"
-            ] = quality_report
-
-            st.session_state[
-                "quality_report_html"
-            ] = quality_report_html
-
-            st.session_state[
-                "final_status"
-            ] = final_status
-
-            st.success(
-                "✅ Professional quality reports generated successfully!"
-            )
 
         # -------------------------------------------------
-        # SHOW GENERATED REPORTS
+        # SAVE REPORTS
         # -------------------------------------------------
 
-        if (
-            "quality_report" in st.session_state
-            and "quality_report_html" in st.session_state
-        ):
+        st.session_state[
+            "quality_report"
+        ] = quality_report
 
-            quality_report = st.session_state[
-                "quality_report"
-            ]
+        st.session_state[
+            "quality_report_html"
+        ] = quality_report_html
 
-            quality_report_html = st.session_state[
-                "quality_report_html"
-            ]
+        st.session_state[
+            "final_status"
+        ] = final_status
 
-            # -------------------------------------------------
-            # TEXT REPORT PREVIEW
-            # -------------------------------------------------
+        st.success(
+            "✅ Professional quality reports generated successfully!"
+        )
 
-            st.subheader(
-                "📋 Quality Report Preview"
-            )
 
-            st.caption(
-                "Review the generated report before downloading it."
-            )
+    # =====================================================
+    # SHOW GENERATED REPORTS
+    # =====================================================
 
-            st.text_area(
-                "Professional Text Report",
-                quality_report,
-                height=500
-            )
+    if (
+        "quality_report" in st.session_state
+        and
+        "quality_report_html" in st.session_state
+    ):
 
-            # -------------------------------------------------
-            # DOWNLOAD TEXT REPORT
-            # -------------------------------------------------
+        quality_report = st.session_state[
+            "quality_report"
+        ]
 
-            st.download_button(
+        quality_report_html = st.session_state[
+            "quality_report_html"
+        ]
 
-                label="⬇️ Download TXT Report",
 
-                data=quality_report,
+        # -------------------------------------------------
+        # TEXT REPORT PREVIEW
+        # -------------------------------------------------
 
-                file_name="quality_report.txt",
+        st.subheader(
+            "📋 Quality Report Preview"
+        )
 
-                mime="text/plain"
-            )
+        st.text_area(
+            "Professional Text Report",
+            quality_report,
+            height=500
+        )
 
-            # -------------------------------------------------
-            # DOWNLOAD HTML REPORT
-            # -------------------------------------------------
 
-            st.download_button(
+        # -------------------------------------------------
+        # DOWNLOAD TEXT REPORT
+        # -------------------------------------------------
 
-                label="🌐 Download Professional HTML Report",
+        st.download_button(
+            label="⬇️ Download TXT Report",
+            data=quality_report,
+            file_name="datly_quality_report.txt",
+            mime="text/plain"
+        )
 
-                data=quality_report_html,
 
-                file_name="quality_report.html",
+        # -------------------------------------------------
+        # HTML REPORT PREVIEW
+        # -------------------------------------------------
 
-                mime="text/html"
-            )
+        st.subheader(
+            "🌐 Professional HTML Report"
+        )
+
+        st.components.v1.html(
+            quality_report_html,
+            height=700,
+            scrolling=True
+        )
+
+
+        # -------------------------------------------------
+        # DOWNLOAD HTML REPORT
+        # -------------------------------------------------
+
+        st.download_button(
+            label="🌐 Download Professional HTML Report",
+            data=quality_report_html,
+            file_name="datly_quality_report.html",
+            mime="text/html"
+        )
