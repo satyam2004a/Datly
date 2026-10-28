@@ -5,11 +5,16 @@ import pandas as pd
 # DATA QUALITY RULES ENGINE
 # =========================================================
 
-def check_missing_values(df):
+def check_missing_values(df, missing_counts=None):
     """Detect missing cells and calculate the missing rate."""
 
-    total_cells = df.shape[0] * df.shape[1]
-    missing_cells = int(df.isna().sum().sum())
+    total_rows, total_columns = df.shape
+    total_cells = total_rows * total_columns
+
+    if missing_counts is None:
+        missing_counts = df.isna().sum()
+
+    missing_cells = int(missing_counts.sum())
 
     missing_rate = (
         missing_cells / total_cells * 100
@@ -17,11 +22,9 @@ def check_missing_values(df):
         else 0.0
     )
 
-    affected_columns = [
-        column
-        for column in df.columns
-        if df[column].isna().any()
-    ]
+    affected_columns = missing_counts[
+        missing_counts > 0
+    ].index.tolist()
 
     return {
         "rule": "Missing Values",
@@ -42,10 +45,13 @@ def check_missing_values(df):
     }
 
 
-def check_duplicate_rows(df):
+def check_duplicate_rows(df, duplicate_count=None):
     """Detect exact duplicate rows."""
 
-    duplicate_count = int(df.duplicated().sum())
+    if duplicate_count is None:
+        duplicate_count = int(
+            df.duplicated().sum()
+        )
 
     duplicate_rate = (
         duplicate_count / len(df) * 100
@@ -71,14 +77,15 @@ def check_duplicate_rows(df):
     }
 
 
-def check_empty_columns(df):
+def check_empty_columns(df, missing_counts=None):
     """Detect columns containing no usable values."""
 
-    empty_columns = [
-        column
-        for column in df.columns
-        if df[column].isna().all()
-    ]
+    if missing_counts is None:
+        missing_counts = df.isna().sum()
+
+    empty_columns = missing_counts[
+        missing_counts == len(df)
+    ].index.tolist()
 
     return {
         "rule": "Empty Columns",
@@ -107,7 +114,9 @@ def check_empty_columns(df):
 def check_duplicate_column_names(df):
     """Detect repeated column names."""
 
-    duplicated_mask = df.columns.duplicated(keep=False)
+    duplicated_mask = df.columns.duplicated(
+        keep=False
+    )
 
     duplicate_names = df.columns[
         duplicated_mask
@@ -149,15 +158,24 @@ def check_constant_columns(df):
 
     constant_columns = []
 
-    for column in df.columns:
+    # nunique() is performed once per column.
+    # This preserves the original behavior while
+    # avoiding creation of temporary dropna() Series.
+    unique_counts = df.nunique(
+        dropna=True
+    )
 
-        non_missing = df[column].dropna()
+    non_missing_counts = df.notna().sum()
 
-        if (
-            len(non_missing) > 0
-            and non_missing.nunique() <= 1
-        ):
-            constant_columns.append(column)
+    constant_mask = (
+        (non_missing_counts > 0)
+        & (unique_counts <= 1)
+    )
+
+    constant_columns = (
+        unique_counts.index[constant_mask]
+        .tolist()
+    )
 
     return {
         "rule": "Constant Columns",
@@ -186,7 +204,10 @@ def check_constant_columns(df):
     }
 
 
-def check_negative_numeric_values(df):
+def check_negative_numeric_values(
+    df,
+    numeric_df=None
+):
     """
     Detect negative numeric values.
 
@@ -195,28 +216,41 @@ def check_negative_numeric_values(df):
     datasets legitimately contain negative numbers.
     """
 
-    negative_counts = {}
-
-    for column in df.select_dtypes(
-        include="number"
-    ).columns:
-
-        count = int(
-            (df[column] < 0).sum()
+    if numeric_df is None:
+        numeric_df = df.select_dtypes(
+            include="number"
         )
 
-        if count > 0:
-            negative_counts[column] = count
+    if numeric_df.empty:
+
+        return {
+            "rule": "Negative Numeric Values",
+            "category": "Validity",
+            "count": 0,
+            "rate": 0.0,
+            "severity": "Pass",
+            "details": "No numeric columns found."
+        }
+
+    # One vectorized operation for all numeric columns.
+    negative_mask = numeric_df < 0
+
+    negative_counts_series = (
+        negative_mask.sum()
+    )
+
+    negative_counts = {
+        column: int(count)
+        for column, count
+        in negative_counts_series.items()
+        if count > 0
+    }
 
     total_negative = sum(
         negative_counts.values()
     )
 
-    numeric_columns = len(
-        df.select_dtypes(
-            include="number"
-        ).columns
-    )
+    numeric_columns = numeric_df.shape[1]
 
     return {
         "rule": "Negative Numeric Values",
@@ -253,11 +287,10 @@ def check_negative_numeric_values(df):
 
 def check_high_missing_columns(
     df,
-    threshold=50
+    threshold=50,
+    missing_counts=None
 ):
     """Detect columns whose missing percentage exceeds a threshold."""
-
-    high_missing = []
 
     if len(df) == 0:
 
@@ -270,14 +303,21 @@ def check_high_missing_columns(
             "details": "Dataset has no rows."
         }
 
-    for column in df.columns:
+    if missing_counts is None:
+        missing_counts = df.isna().sum()
 
-        missing_percentage = (
-            df[column].isna().mean() * 100
-        )
+    # Vectorized missing percentage calculation.
+    missing_percentages = (
+        missing_counts / len(df) * 100
+    )
 
-        if missing_percentage > threshold:
-            high_missing.append(column)
+    high_missing = (
+        missing_percentages[
+            missing_percentages > threshold
+        ]
+        .index
+        .tolist()
+    )
 
     return {
         "rule": "High Missing Columns",
@@ -286,8 +326,7 @@ def check_high_missing_columns(
         "rate": (
             round(
                 len(high_missing)
-                / len(df.columns)
-                * 100,
+                / len(df.columns) * 100,
                 2
             )
             if len(df.columns) > 0
@@ -310,27 +349,82 @@ def check_high_missing_columns(
     }
 
 
+# =========================================================
+# MAIN QUALITY RULE ENGINE
+# =========================================================
+
 def run_quality_rules(df):
     """
     Run all general-purpose data quality rules.
 
-    Returns both machine-friendly rule results and a DataFrame
-    suitable for the Streamlit dashboard.
+    Performance optimized:
+    - Missing-value counts calculated once.
+    - Numeric columns selected once.
+    - Duplicate rows calculated once.
+    - Missing percentages reused.
+    - Constant-column analysis is vectorized.
+    - Existing rule names and output structure preserved.
     """
 
+    # ---------------------------------------------------------
+    # SHARED CALCULATIONS
+    # ---------------------------------------------------------
+
+    missing_counts = df.isna().sum()
+
+    duplicate_count = int(
+        df.duplicated().sum()
+    )
+
+    numeric_df = df.select_dtypes(
+        include="number"
+    )
+
+    # ---------------------------------------------------------
+    # RUN RULES
+    # ---------------------------------------------------------
+
     rules = [
-        check_missing_values(df),
-        check_duplicate_rows(df),
-        check_empty_columns(df),
-        check_duplicate_column_names(df),
-        check_constant_columns(df),
-        check_negative_numeric_values(df),
-        check_high_missing_columns(df)
+        check_missing_values(
+            df,
+            missing_counts
+        ),
+
+        check_duplicate_rows(
+            df,
+            duplicate_count
+        ),
+
+        check_empty_columns(
+            df,
+            missing_counts
+        ),
+
+        check_duplicate_column_names(
+            df
+        ),
+
+        check_constant_columns(
+            df
+        ),
+
+        check_negative_numeric_values(
+            df,
+            numeric_df
+        ),
+
+        check_high_missing_columns(
+            df,
+            threshold=50,
+            missing_counts=missing_counts
+        )
     ]
 
-    results = {
+    # ---------------------------------------------------------
+    # FINAL RESULT
+    # ---------------------------------------------------------
+
+    return {
         "rules": rules,
         "rule_table": pd.DataFrame(rules)
     }
-
-    return results

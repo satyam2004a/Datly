@@ -54,20 +54,17 @@ def calculate_individual_score(z_score, iqr_anomaly):
 
     abs_z = abs(z_score)
 
-    # Z-score contribution: 70%
     z_score_component = min(
         (abs_z / 5) * 100,
         100
     )
 
-    # IQR contribution: 30%
     iqr_component = (
         100
         if iqr_anomaly
         else 0
     )
 
-    # Combined score
     score = (
         z_score_component * Z_SCORE_WEIGHT
         + iqr_component * IQR_WEIGHT
@@ -81,62 +78,181 @@ def calculate_individual_score(z_score, iqr_anomaly):
 # =========================================================
 
 def detect_anomalies(df):
+    """
+    Detect numerical anomalies using Z-score and IQR.
 
-    # Find numerical columns
+    Performance optimized:
+    - Uses vectorized Pandas operations.
+    - Avoids row-by-row Python loops.
+    - Stores detailed data only for anomalous rows.
+    - Preserves the existing result structure expected by
+      the rest of Datly.
+    """
+
+    # ---------------------------------------------------------
+    # FIND NUMERICAL COLUMNS
+    # ---------------------------------------------------------
+
+
     numerical_columns = df.select_dtypes(
         include="number"
     ).columns
 
-    # Remove ID-like columns
     numerical_columns = [
         column
         for column in numerical_columns
-        if not column.lower().endswith(
+        if not str(column).lower().endswith(
             ID_COLUMN_SUFFIX
+        )
+        and not (
+            df[column].dropna().nunique() <= 2
+            and set(
+                df[column].dropna().unique()
+            ).issubset({0, 1})
         )
     ]
 
+
     results = {}
+
+
+    # -----------------------------------------------------
+    # DETECT INVALID VALUES IN NUMERIC-LIKE COLUMNS
+    # -----------------------------------------------------
+
+    for column in df.select_dtypes(
+        exclude="number"
+    ).columns:
+
+        # Do not analyze identifier columns
+        if (
+            str(column).lower() == "id"
+            or str(column).lower().endswith(ID_COLUMN_SUFFIX)
+        ):
+            continue
+
+        # Convert valid numeric values for testing only.
+        # Original DataFrame values remain unchanged.
+        numeric_values = pd.to_numeric(
+            df[column],
+            errors="coerce"
+        )
+
+        non_missing_mask = df[column].notna()
+
+        invalid_mask = (
+            non_missing_mask
+            & numeric_values.isna()
+        )
+
+        valid_numeric_count = int(
+            numeric_values.notna().sum()
+        )
+
+        invalid_count = int(invalid_mask.sum())
+
+        # Require at least two valid numeric values
+        # to identify a mixed numeric/text column.
+        if valid_numeric_count < 2 or invalid_count == 0:
+            continue
+
+        invalid_values = df.loc[
+            invalid_mask, column
+        ]
+
+        anomaly_data = pd.DataFrame({
+            "row_index": invalid_values.index,
+            "value": invalid_values.values,
+            "z_score": float("nan"),
+            "iqr_anomaly": False,
+            "anomaly_method": "Invalid Numeric Value",
+            "severity": "High",
+            "individual_score": 100,
+            "is_anomaly": True
+        })
+
+        results[column] = {
+            "status": "analyzed",
+            "missing_values": int(df[column].isna().sum()),
+            "anomaly_count": invalid_count,
+            "data": anomaly_data
+        }
+
+
+    # ---------------------------------------------------------
+    # ANALYZE EACH NUMERICAL COLUMN
+    # ---------------------------------------------------------
 
     for column in numerical_columns:
 
-        # Count missing values
-        missing_count = df[column].isna().sum()
+        series = df[column]
 
-        # Mean and standard deviation
-        mean = df[column].mean()
-        std = df[column].std()
+        # -----------------------------------------------------
+        # MISSING VALUES
+        # -----------------------------------------------------
 
-        # IQR calculation
-        q1 = df[column].quantile(0.25)
-        q3 = df[column].quantile(0.75)
+        missing_count = int(
+            series.isna().sum()
+        )
 
+        # -----------------------------------------------------
+        # BASIC STATISTICS
+        # -----------------------------------------------------
+
+        valid_series = series.dropna()
+
+        # Statistical anomaly detection is unreliable
+        # when there are too few valid observations.
+        if len(valid_series) < 5:
+
+            results[column] = {
+                "status": "skipped",
+                "reason": (
+                    "Insufficient valid values "
+                    "for statistical anomaly detection"
+                ),
+                "missing_values": missing_count
+            }
+
+            continue
+
+        mean = valid_series.mean()
+        std = valid_series.std()
+
+        q1 = valid_series.quantile(0.25)
+        q3 = valid_series.quantile(0.75)
         iqr = q3 - q1
 
         lower_limit = (
-            q1 - IQR_MULTIPLIER * iqr
+            q1
+            - (IQR_MULTIPLIER * iqr)
         )
 
         upper_limit = (
-            q3 + IQR_MULTIPLIER * iqr
+            q3
+            + (IQR_MULTIPLIER * iqr)
         )
 
-        # Handle constant columns
+        # -----------------------------------------------------
+        # CONSTANT / INVALID STATISTICAL COLUMN
+        # -----------------------------------------------------
+
         if std == 0 or pd.isna(std):
 
             results[column] = {
                 "status": "skipped",
                 "reason": "Column has no variation",
-                "missing_values": int(
-                    missing_count
-                )
+                "missing_values": missing_count
             }
 
             continue
 
-        # Z-score
+        # -----------------------------------------------------
+        # Z-SCORE
+        # -----------------------------------------------------
+
         z_scores = (
-            df[column] - mean
+            series - mean
         ) / std
 
         z_anomaly = (
@@ -144,98 +260,198 @@ def detect_anomalies(df):
             > Z_ANOMALY_THRESHOLD
         )
 
-        # IQR anomaly
+        # -----------------------------------------------------
+        # IQR ANOMALY
+        # -----------------------------------------------------
+
         iqr_anomaly = (
-            (df[column] < lower_limit)
+            (series < lower_limit)
             |
-            (df[column] > upper_limit)
+            (series > upper_limit)
         )
 
-        # Final anomaly
+        # -----------------------------------------------------
+        # FINAL ANOMALY MASK
+        # -----------------------------------------------------
+
         is_anomaly = (
             z_anomaly
             |
             iqr_anomaly
         )
 
-        # -------------------------------------------------
-        # Calculate method, severity and score together
-        # -------------------------------------------------
 
-        anomaly_method = []
-        severity = []
-        individual_scores = []
+        print(
+            f"\nDEBUG — {column}"
+        )
 
-        for z, z_flag, iqr_flag in zip(
-            z_scores,
-            z_anomaly,
-            iqr_anomaly
-        ):
+        print(
+            pd.DataFrame({
+                "value": series,
+                "z_score": z_scores,
+                "iqr_anomaly": iqr_anomaly,
+                "z_anomaly": z_anomaly,
+                "is_anomaly": is_anomaly
+            })
+        )
 
-            # Detection method
-            if z_flag and iqr_flag:
-                method = "Z-score + IQR"
+        anomaly_count = int(
+            is_anomaly.sum()
+        )
 
-            elif z_flag:
-                method = "Z-score"
+        # -----------------------------------------------------
+        # STORE ONLY ANOMALOUS ROWS
+        # -----------------------------------------------------
 
-            elif iqr_flag:
-                method = "IQR"
+        if anomaly_count > 0:
 
-            else:
-                method = "None"
-
-            anomaly_method.append(
-                method
+            anomaly_z_scores = (
+                z_scores[is_anomaly]
             )
 
-            # Severity
-            severity.append(
-                get_severity(
-                    z,
-                    iqr_flag
-                )
+            anomaly_iqr = (
+                iqr_anomaly[is_anomaly]
             )
 
-            # Individual score
-            individual_scores.append(
-                calculate_individual_score(
-                    z,
-                    iqr_flag
-                )
+            anomaly_z_flag = (
+                z_anomaly[is_anomaly]
             )
 
-        # Store results
+            # -------------------------------------------------
+            # VECTORIZED METHOD
+            # -------------------------------------------------
+
+            anomaly_method = pd.Series(
+                "IQR",
+                index=anomaly_z_scores.index,
+                dtype="object"
+            )
+
+            both_mask = (
+                anomaly_z_flag
+                & anomaly_iqr
+            )
+
+            z_only_mask = (
+                anomaly_z_flag
+                & ~anomaly_iqr
+            )
+
+            anomaly_method.loc[
+                both_mask
+            ] = "Z-score + IQR"
+
+            anomaly_method.loc[
+                z_only_mask
+            ] = "Z-score"
+
+            # -------------------------------------------------
+            # VECTORIZED SEVERITY
+            # -------------------------------------------------
+
+            abs_z = (
+                anomaly_z_scores.abs()
+            )
+
+            severity = pd.Series(
+                "Medium",
+                index=anomaly_z_scores.index,
+                dtype="object"
+            )
+
+            severity.loc[
+                abs_z > CRITICAL_Z_THRESHOLD
+            ] = "Critical"
+
+            severity.loc[
+                (abs_z > HIGH_Z_THRESHOLD)
+                & (abs_z <= CRITICAL_Z_THRESHOLD)
+            ] = "High"
+
+            # -------------------------------------------------
+            # VECTORIZED INDIVIDUAL SCORE
+            # -------------------------------------------------
+
+            z_score_component = (
+                (abs_z / 5) * 100
+            ).clip(
+                upper=100
+            )
+
+            iqr_component = (
+                anomaly_iqr.astype(float) * 100
+            )
+
+            individual_scores = (
+                z_score_component * Z_SCORE_WEIGHT
+                + iqr_component * IQR_WEIGHT
+            ).round(2)
+
+            # -------------------------------------------------
+            # CREATE COMPACT ANOMALY DATA
+            # -------------------------------------------------
+
+            anomaly_data = pd.DataFrame({
+
+                "row_index":
+                    anomaly_z_scores.index,
+
+                "value":
+                    series.loc[is_anomaly],
+
+                "z_score":
+                    anomaly_z_scores,
+
+                "iqr_anomaly":
+                    anomaly_iqr,
+
+                "anomaly_method":
+                    anomaly_method,
+
+                "severity":
+                    severity,
+
+                "individual_score":
+                    individual_scores,
+
+                "is_anomaly":
+                    True
+            })
+
+        else:
+
+            # Keep the same DataFrame schema while avoiding
+            # creation of a full-size DataFrame.
+
+            anomaly_data = pd.DataFrame(
+                columns=[
+                    "row_index",
+                    "value",
+                    "z_score",
+                    "iqr_anomaly",
+                    "anomaly_method",
+                    "severity",
+                    "individual_score",
+                    "is_anomaly"
+                ]
+            )
+
+        # -----------------------------------------------------
+        # STORE RESULTS
+        # -----------------------------------------------------
+
         results[column] = {
 
             "status": "analyzed",
 
-            "missing_values": int(
-                missing_count
-            ),
+            "missing_values":
+                missing_count,
 
-            "anomaly_count": int(
-                is_anomaly.sum()
-            ),
+            "anomaly_count":
+                anomaly_count,
 
-            "data": pd.DataFrame({
-
-                "row_index": df.index,
-
-                "value": df[column],
-
-                "z_score": z_scores,
-
-                "iqr_anomaly": iqr_anomaly,
-
-                "anomaly_method": anomaly_method,
-
-                "severity": severity,
-
-                "individual_score": individual_scores,
-
-                "is_anomaly": is_anomaly
-            })
+            "data":
+                anomaly_data
         }
 
     return results
@@ -253,9 +469,11 @@ def anomaly_summary(results):
 
         summary.append({
 
-            "column": column,
+            "column":
+                column,
 
-            "status": result["status"],
+            "status":
+                result["status"],
 
             "missing_values":
                 result["missing_values"],
@@ -285,17 +503,16 @@ def combined_anomaly_report(results):
 
         data = result["data"]
 
-        anomalies = data[
-            data["is_anomaly"]
-        ].copy()
+        if data.empty:
+            continue
 
-        if not anomalies.empty:
+        anomalies = data.copy()
 
-            anomalies["column"] = column
+        anomalies["column"] = column
 
-            all_anomalies.append(
-                anomalies
-            )
+        all_anomalies.append(
+            anomalies
+        )
 
     if not all_anomalies:
 
@@ -328,7 +545,6 @@ def calculate_anomaly_score(
     total_rows
 ):
 
-    # No anomalies = perfect anomaly score
     if report.empty:
         return 0.0
 
@@ -344,7 +560,6 @@ def calculate_anomaly_score(
         "High": 75,
 
         "Critical": 100
-
     }
 
     scores = report[
@@ -353,15 +568,12 @@ def calculate_anomaly_score(
         severity_scores
     ).fillna(0)
 
-    # Total anomaly severity
     total_penalty = scores.sum()
 
-    # Normalize against dataset size
     anomaly_score = (
         total_penalty / total_rows
     )
 
-    # Keep score between 0 and 100
     anomaly_score = min(
         max(anomaly_score, 0),
         100

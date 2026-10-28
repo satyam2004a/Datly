@@ -1,9 +1,28 @@
+# Python cache files
 __pycache__/
-*.pyc
+*.py[cod]
 
+# Virtual environments
 .venv/
 venv/
 env/
 
+# Secrets and environment variables
 .streamlit/secrets.toml
 .env
+.env.*
+
+# IDE and editor files
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Local and Private datasets
+data/
+
+# Nested project backups — keep out of the main repository
+Datly/
+Datly_backup/
