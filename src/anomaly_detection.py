@@ -93,6 +93,7 @@ def detect_anomalies(df):
     # FIND NUMERICAL COLUMNS
     # ---------------------------------------------------------
 
+
     numerical_columns = df.select_dtypes(
         include="number"
     ).columns
@@ -103,9 +104,80 @@ def detect_anomalies(df):
         if not str(column).lower().endswith(
             ID_COLUMN_SUFFIX
         )
+        and not (
+            df[column].dropna().nunique() <= 2
+            and set(
+                df[column].dropna().unique()
+            ).issubset({0, 1})
+        )
     ]
 
+
     results = {}
+
+
+    # -----------------------------------------------------
+    # DETECT INVALID VALUES IN NUMERIC-LIKE COLUMNS
+    # -----------------------------------------------------
+
+    for column in df.select_dtypes(
+        exclude="number"
+    ).columns:
+
+        # Do not analyze identifier columns
+        if (
+            str(column).lower() == "id"
+            or str(column).lower().endswith(ID_COLUMN_SUFFIX)
+        ):
+            continue
+
+        # Convert valid numeric values for testing only.
+        # Original DataFrame values remain unchanged.
+        numeric_values = pd.to_numeric(
+            df[column],
+            errors="coerce"
+        )
+
+        non_missing_mask = df[column].notna()
+
+        invalid_mask = (
+            non_missing_mask
+            & numeric_values.isna()
+        )
+
+        valid_numeric_count = int(
+            numeric_values.notna().sum()
+        )
+
+        invalid_count = int(invalid_mask.sum())
+
+        # Require at least two valid numeric values
+        # to identify a mixed numeric/text column.
+        if valid_numeric_count < 2 or invalid_count == 0:
+            continue
+
+        invalid_values = df.loc[
+            invalid_mask, column
+        ]
+
+        anomaly_data = pd.DataFrame({
+            "row_index": invalid_values.index,
+            "value": invalid_values.values,
+            "z_score": float("nan"),
+            "iqr_anomaly": False,
+            "anomaly_method": "Invalid Numeric Value",
+            "severity": "High",
+            "individual_score": 100,
+            "is_anomaly": True
+        })
+
+        results[column] = {
+            "status": "analyzed",
+            "missing_values": int(df[column].isna().sum()),
+            "anomaly_count": invalid_count,
+            "data": anomaly_data
+        }
+
 
     # ---------------------------------------------------------
     # ANALYZE EACH NUMERICAL COLUMN
@@ -207,6 +279,7 @@ def detect_anomalies(df):
             |
             iqr_anomaly
         )
+
 
         print(
             f"\nDEBUG — {column}"

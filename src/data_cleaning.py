@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 
 # ============================================================
@@ -232,6 +233,7 @@ def clean_dataset(df, anomaly_report):
 
             continue
 
+
         # ====================================================
         # NUMERIC COLUMNS
         # ====================================================
@@ -240,15 +242,73 @@ def clean_dataset(df, anomaly_report):
             cleaned_df[column]
         ):
 
-            replacement_value = (
-                cleaned_df[column].median()
-            )
+            # Use available numeric values.
+            valid_values = cleaned_df[column].dropna()
+
+            # Exclude anomalies detected by Datly.
+            if (
+                anomaly_report is not None
+                and not anomaly_report.empty
+                and "column" in anomaly_report.columns
+                and "row_index" in anomaly_report.columns
+            ):
+                detected_indices = anomaly_report.loc[
+                    anomaly_report["column"] == column,
+                    "row_index"
+                ]
+
+                valid_values = valid_values.loc[
+                    ~valid_values.index.isin(detected_indices)
+                ]
+
+            # Exclude invalid ages while calculating the median.
+            if "age" in str(column).lower():
+                valid_values = valid_values[
+                    valid_values.between(0, 120)
+                ]
+
+            if valid_values.empty:
+                cleaning_actions.append({
+                    "row_index": "N/A",
+                    "column": column,
+                    "original_value": "Missing",
+                    "action": "Skipped Missing Value",
+                    "reason": "No reliable numeric value for imputation",
+                    "new_value": "Remains Missing"
+                })
+                continue
+
+            replacement_value = valid_values.median()
+
+            # Keep countable values as whole numbers
+            column_name = str(column).lower()
+
+            count_keywords = [
+                "age", "count", "number", "num_", "quantity",
+                "qty", "total", "children", "orders"
+            ]
+
+            if any(keyword in column_name for keyword in count_keywords):
+                replacement_value = int(round(replacement_value))
+
 
         # ====================================================
         # CATEGORICAL / TEXT COLUMNS
         # ====================================================
 
         else:
+
+            # Do not guess missing email addresses.
+            if "email" in str(column).lower():
+                cleaning_actions.append({
+                    "row_index": "N/A",
+                    "column": column,
+                    "original_value": "Missing",
+                    "action": "Flagged for Review",
+                    "reason": "Missing email cannot be safely inferred",
+                    "new_value": "Remains Missing"
+            })
+            continue
 
             mode_values = (
                 cleaned_df[column].mode()
@@ -292,127 +352,154 @@ def clean_dataset(df, anomaly_report):
     if (
         anomaly_report is not None
         and not anomaly_report.empty
+        and "column" in anomaly_report.columns
+        and "row_index" in anomaly_report.columns
     ):
 
-        for column, column_anomalies in (
-            anomaly_report.groupby("column")
-        ):
+        for column in cleaned_df.columns:
 
-            if column not in cleaned_df.columns:
+            # Skip identifier columns.
+            if (
+                str(column).lower() == "id"
+                or str(column).lower().endswith("_id")
+            ):
                 continue
 
-            # Never alter identifier columns.
-            if column in protected_columns:
-                continue
-
-            # Never automatically replace anomalies
-            # in code-like columns.
+            # Skip code-like columns.
             if _is_code_like_column(column):
                 continue
 
-            anomaly_indices = (
-                column_anomalies["row_index"]
-            )
-
-            valid_indices = anomaly_indices[
-                anomaly_indices.isin(
-                    cleaned_df.index
-                )
+            column_anomalies = anomaly_report[
+                anomaly_report["column"] == column
             ]
 
-            if valid_indices.empty:
+            if column_anomalies.empty:
                 continue
 
-            # ------------------------------------------------
-            # NUMERIC ANOMALIES
-            # ------------------------------------------------
 
-            if pd.api.types.is_numeric_dtype(
-                cleaned_df[column]
-            ):
+            # Handle numeric and invalid-numeric anomalies.
+            for row_index in column_anomalies["row_index"]:
 
-                replacement_value = (
-                    cleaned_df[column].median()
-                )
-
-                if pd.isna(replacement_value):
+                if row_index not in cleaned_df.index:
                     continue
 
-                original_values = (
-                    cleaned_df.loc[
-                        valid_indices,
-                        column
-                    ].copy()
+                original_value = cleaned_df.at[
+                    row_index, column
+                ]
+
+                if pd.isna(original_value):
+                    continue
+
+                # Preserve valid ages and scores.
+                column_name = str(column).lower()
+
+                numeric_original = pd.to_numeric(
+                    original_value,
+                    errors="coerce"
                 )
 
-                cleaned_df.loc[
-                    valid_indices,
-                    column
-                ] = replacement_value
+                if pd.notna(numeric_original):
 
-                cleaning_actions.extend(
-                    {
+                    if (
+                        "age" in column_name
+                        and 0 <= numeric_original <= 120
+                    ):
+                        continue
+
+                    if (
+                        any(word in column_name for word in [
+                            "score", "mark", "percentage"
+                        ])
+                        and 0 <= numeric_original <= 100
+                    ):
+                        continue
+
+                # Convert values to numeric for calculating
+                # the replacement. Invalid text becomes NaN.
+                numeric_values = pd.to_numeric(
+                    cleaned_df[column],
+                    errors="coerce"
+                )
+
+                valid_values = numeric_values.dropna()
+
+                anomaly_indices = column_anomalies["row_index"]
+
+                valid_values = valid_values.loc[
+                    ~valid_values.index.isin(anomaly_indices)
+                ]
+
+                # Keep realistic ages only.
+                if "age" in str(column).lower():
+                    valid_values = valid_values[
+                        valid_values.between(0, 120)
+                    ]
+
+                # Marks should be within the 0–100 range.
+                if "mark" in str(column).lower():
+                    valid_values = valid_values[
+                        valid_values.between(0, 100)
+                    ]
+
+                if valid_values.empty:
+                    cleaning_actions.append({
                         "row_index": row_index,
                         "column": column,
                         "original_value": original_value,
-                        "action": "Replaced Anomaly",
-                        "reason": "Statistical anomaly",
-                        "new_value": replacement_value
-                    }
-                    for (
-                        row_index,
-                        original_value
-                    ) in original_values.items()
-                )
-
-            # ------------------------------------------------
-            # CATEGORICAL ANOMALIES
-            # ------------------------------------------------
-
-            else:
-
-                mode_values = (
-                    cleaned_df[column].mode()
-                )
-
-                if mode_values.empty:
+                        "action": "Flagged for Review",
+                        "reason": "No reliable numeric values for replacement",
+                        "new_value": original_value
+                    })
                     continue
 
-                # Do not guess when multiple values
-                # have the same frequency.
-                if len(mode_values) > 1:
-                    continue
+                replacement_value = valid_values.median()
 
-                replacement_value = (
-                    mode_values.iloc[0]
+                # Keep countable values as whole numbers.
+                column_name = str(column).lower()
+
+                count_keywords = [
+                    "age", "count", "number", "num_",
+                    "quantity", "qty", "children", "orders"
+                ]
+
+                if any(
+                    keyword in column_name
+                    for keyword in count_keywords
+                ):
+                    replacement_value = int(
+                        round(replacement_value)
+                    )
+
+                # Convert the column to numeric before assigning the replacement.
+                cleaned_df[column] = pd.to_numeric(
+                    cleaned_df[column],
+                    errors="coerce"
                 )
 
-                original_values = (
-                    cleaned_df.loc[
-                        valid_indices,
-                        column
-                    ].copy()
-                )
+                # Allow decimal replacements in integer columns when necessary.
+                if not float(replacement_value).is_integer():
+                    cleaned_df[column] = cleaned_df[column].astype("float64")
 
-                cleaned_df.loc[
-                    valid_indices,
-                    column
-                ] = replacement_value
+                # Assign the numeric replacement.
+                cleaned_df.at[row_index, column] = replacement_value
 
-                cleaning_actions.extend(
-                    {
-                        "row_index": row_index,
-                        "column": column,
-                        "original_value": original_value,
-                        "action": "Replaced Anomaly",
-                        "reason": "Categorical anomaly",
-                        "new_value": replacement_value
-                    }
-                    for (
-                        row_index,
-                        original_value
-                    ) in original_values.items()
-                )
+                cleaning_actions.append({
+                    "row_index": row_index,
+                    "column": column,
+                    "original_value": original_value,
+                    "action": "Replaced Anomaly",
+                    "reason": "Replaced using median of valid numeric values",
+                    "new_value": replacement_value
+                })
+
+            # Restore numeric dtype when the column is now numeric.
+            cleaned_df[column] = pd.to_numeric(
+                cleaned_df[column],
+                errors="coerce"
+            )
+
+
+
 
     # ========================================================
     # CLEANING REPORT

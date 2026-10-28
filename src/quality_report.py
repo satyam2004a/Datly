@@ -1,4 +1,4 @@
-import html
+﻿import html
 import pandas as pd
 
 
@@ -8,8 +8,8 @@ import pandas as pd
 
 DATLY_NAME = "Datly"
 DATLY_TAGLINE = "Smart Data Quality & Anomaly Detection"
-DATLY_CREATOR = "Designed & Developed by Satyam Raj · 2026"
-DATLY_MARK = "D + SR"
+DATLY_CREATOR = "Designed & Developed by Satyam Raj Â· 2026"
+
 
 
 # ============================================================
@@ -420,11 +420,9 @@ def generate_quality_report(
     # DATLY HEADER
     # ========================================================
 
-    report.append("🛡️ DATLY")
+    report.append("ðŸ›¡ï¸ DATLY")
     report.append(DATLY_TAGLINE)
-    report.append(
-        f"Creator Mark: {DATLY_MARK}"
-    )
+
     report.append("=" * 90)
     report.append(
         "PROFESSIONAL DATA QUALITY REPORT"
@@ -525,7 +523,7 @@ def generate_quality_report(
 
     report.append(
         f"Dataset Size : "
-        f"{rows} rows × {columns} columns"
+        f"{rows} rows Ã— {columns} columns"
     )
 
     # ========================================================
@@ -681,7 +679,7 @@ def generate_quality_report(
         report.append("")
 
         report.append(
-            "✓ All detected anomalies were resolved."
+            "âœ“ All detected anomalies were resolved."
         )
 
     else:
@@ -689,7 +687,7 @@ def generate_quality_report(
         report.append("")
 
         report.append(
-            f"⚠ {final_anomaly_count} anomaly/anomalies "
+            f"âš  {final_anomaly_count} anomaly/anomalies "
             "remain for further review."
         )
 
@@ -768,11 +766,8 @@ def generate_quality_report(
 
     report.append("")
     report.append("=" * 90)
-    report.append("🛡️ DATLY")
+    report.append("ðŸ›¡ï¸ DATLY")
     report.append(DATLY_TAGLINE)
-    report.append(
-        f"Creator Mark: {DATLY_MARK}"
-    )
     report.append(DATLY_CREATOR)
     report.append(
         "Professional Reporting Module"
@@ -869,13 +864,13 @@ def generate_quality_report_html(
     if final_anomaly_count == 0:
 
         anomaly_status_message = (
-            "✅ All detected anomalies were resolved."
+            "âœ… All detected anomalies were resolved."
         )
 
     else:
 
         anomaly_status_message = (
-            f"⚠️ {final_anomaly_count} anomaly/anomalies "
+            f"âš ï¸ {final_anomaly_count} anomaly/anomalies "
             "remain for further review."
         )
 
@@ -941,9 +936,6 @@ def generate_quality_report_html(
         DATLY_CREATOR
     )
 
-    safe_mark = html.escape(
-        DATLY_MARK
-    )
 
     safe_status_description = html.escape(
         status_description
@@ -1077,23 +1069,7 @@ body {{
     opacity: 0.9;
 }}
 
-.creator-mark {{
-    margin-top: 18px;
 
-    display: inline-block;
-
-    padding: 7px 12px;
-
-    border:
-        1px solid
-        rgba(255, 255, 255, 0.2);
-
-    border-radius: 8px;
-
-    font-size: 12px;
-
-    color: #e2e8f0;
-}}
 
 /* ========================================================
    SECTIONS
@@ -1376,22 +1352,6 @@ body {{
     color: #6b7280;
 }}
 
-.footer-mark {{
-    display: inline-block;
-
-    margin-top: 12px;
-
-    padding: 5px 10px;
-
-    border:
-        1px solid #d1d5db;
-
-    border-radius: 7px;
-
-    font-size: 11px;
-
-    color: #4b5563;
-}}
 
 .footer-creator {{
     margin-top: 12px;
@@ -1500,7 +1460,7 @@ body {{
         <div>
 
             <div class="brand-name">
-                🛡️ {DATLY_NAME}
+                ðŸ›¡ï¸ {DATLY_NAME}
             </div>
 
             <div class="brand-tagline">
@@ -1521,10 +1481,6 @@ body {{
         Dataset:
         <strong>{safe_dataset_name}</strong>
     </p>
-
-    <div class="creator-mark">
-        {safe_mark}
-    </div>
 
 </div>
 
@@ -1811,15 +1767,11 @@ body {{
 <div class="footer">
 
     <div class="footer-brand">
-        🛡️ Datly
+        ðŸ›¡ï¸ Datly
     </div>
 
     <div class="footer-tagline">
         {safe_tagline}
-    </div>
-
-    <div class="footer-mark">
-        {safe_mark}
     </div>
 
     <div class="footer-creator">
