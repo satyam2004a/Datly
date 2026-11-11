@@ -2,9 +2,11 @@
 
 Datly is a Python-based data quality platform that helps users analyze, validate, clean, and evaluate CSV datasets through an interactive Streamlit dashboard. It provides dataset profiling, data quality checks, anomaly detection, automated cleaning, quality scoring, recommendations, and report generation in one workflow.
 
+
 ## Dashboard Preview
 
-![Datly Dashboard]\(![alt text](assets/datly-dashboard.png))
+![Datly Dashboard](assets/datly-dashboard.png)
+
 
 ## Overview
 
